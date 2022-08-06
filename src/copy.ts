@@ -78,6 +78,7 @@ const findImagePaths = async function(paths: string[]): Promise<string[]> {
 
     return result
 }
+
 /**
  * @param  {string[]} imagePaths Full image paths.
  * @param  {string} targetFolder The name of the folder which the images should be moved to.
@@ -85,32 +86,42 @@ const findImagePaths = async function(paths: string[]): Promise<string[]> {
 const moveImages = async function(imagePaths: string[], targetFolder: string) {
     const targetDir = path.join(originalsPath, targetFolder)
 
-    if (!fs.existsSync(targetDir))
+    if (!fs.existsSync(targetDir)) {
+        console.log(`Target folder does not exist, creating ${targetDir}`)
         await fs.promises.mkdir(targetDir)
+    }
 
     for (const imagePath of imagePaths) {
         // No need to move as the file is already there.
         if (path.dirname(imagePath) === targetDir)
             continue
 
-        await fs.promises.rename(imagePath, path.join(targetDir, path.basename(imagePath)))
+        const newImagePath = path.join(targetDir, path.basename(imagePath))
+
+        console.log(`Moving image/video from ${imagePath} to ${newImagePath}`)
+
+        // await fs.promises.rename(imagePath, newImagePath)
     }
 }
 
 const yamlPaths = await recursiveSearchSidecar(sidecarPath)
 
-console.log(yamlPaths)
+console.log(`Found ${yamlPaths.length} YAML files in ${sidecarPath}`)
 
-const privateYamlPaths = yamlPaths
-    .filter(x => readYamlFile(x).Private)
-console.log('private', privateYamlPaths)
-const privateImagePaths = await findImagePaths(privateYamlPaths)
-console.log(privateImagePaths)
-moveImages(privateImagePaths, 'private')
+const moveEm = async function(folderName: string, func: Function) {
+    const matchingYamlPaths = yamlPaths
+        .filter(x => func(readYamlFile(x)))
 
-const archivedYamlPaths = yamlPaths
-    .filter(x => readYamlFile(x).DeletedAt !== undefined)
-console.log('archived', archivedYamlPaths)
-const archivedImagePaths = await findImagePaths(archivedYamlPaths)
-console.log(archivedImagePaths)
-moveImages(archivedImagePaths, 'archived')
+    console.log(`Found ${matchingYamlPaths.length} YAML files that belong to ${folderName}`)
+    const matchingImagePaths = await findImagePaths(matchingYamlPaths)
+    console.log(`Found ${matchingImagePaths.length} image/video files that belong to ${folderName}`)
+
+    if (matchingYamlPaths.length > matchingImagePaths.length) {
+        console.log(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} images/videos missing?`)
+    }
+
+    await moveImages(matchingImagePaths, folderName)
+}
+
+await moveEm('private', (file: SidecarFile) => file.Private === true)
+await moveEm('archived', (file: SidecarFile) => file.DeletedAt !== undefined)
