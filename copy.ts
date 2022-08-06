@@ -1,9 +1,14 @@
-import * as yaml from 'js-yaml';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as yaml from 'js-yaml'
+import * as fs from 'fs'
+import * as path from 'path'
 
-const photosPath = '/media/harvey/data/Images/Life/main/'
-const sidecarPath = '/media/harvey/data/Images/PhotoPrism/storage/sidecar/'
+// const originalsPath = '/media/harvey/data/Images/Life/main/'
+// const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
+
+const originalsPath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/originals/'
+const storagePath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/storage/'
+
+const sidecarPath = path.join(storagePath, 'sidecar/')
 
 /*
 TakenAt: 2003-07-11T14:08:33Z
@@ -25,117 +30,120 @@ UpdatedAt: 2022-08-05T18:06:59.585384018Z
 DeletedAt: 2022-08-05T18:06:59.585384018Z
 */
 export interface SidecarFile {
-    TakenAt:      Date;
-    TakenSrc:     string;
-    UID:          string;
-    Type:         string;
-    Title:        string;
-    OriginalName: string;
-    Year:         number;
-    Month:        number;
-    Day:          number;
-    Quality:      number;
-    Favourite:    boolean;
-    Private:      boolean;
-    Details:      SideCarFileDetails;
-    CreatedAt:    Date;
-    UpdatedAt:    Date;
-    DeletedAt:    Date;
+    TakenAt:      Date
+    TakenSrc:     string
+    UID:          string
+    Type:         string
+    Title:        string
+    OriginalName: string
+    Year:         number
+    Month:        number
+    Day:          number
+    Quality:      number
+    Favourite:    boolean
+    Private:      boolean
+    Details:      SideCarFileDetails
+    CreatedAt:    Date
+    UpdatedAt:    Date
+    DeletedAt:    Date
 }
 
 export interface SideCarFileDetails {
-    Keywords: string;
+    Keywords: string
 }
 
 const search = async function(folder: string): Promise<string[]> {
-    const paths: string[] = [];
+    const paths: string[] = []
 
     try {
-        const filesOrFolderNames = await fs.promises.readdir(folder);
+        const filesOrFolderNames = await fs.promises.readdir(folder)
         for (const fileOrFolderName of filesOrFolderNames) {
-            let fileOrFolderPath = path.join(folder, fileOrFolderName);
-            const stat = await fs.promises.stat(fileOrFolderPath);
+            let fileOrFolderPath = path.join(folder, fileOrFolderName)
+            const stat = await fs.promises.stat(fileOrFolderPath)
 
             if (stat.isFile()) {
                 if (path.extname(fileOrFolderName) === '.yml')
                     if (matches(fileOrFolderPath))
                         paths.push(fileOrFolderPath)
             } else if (stat.isDirectory()) {
-                await search(fileOrFolderPath);
+                await search(fileOrFolderPath)
             }
         }
     } catch (err) {
-        console.error(err);
+        console.error(err)
     }
 
-    return paths;
-};
+    return paths
+}
 
 const matches = function(yamlFilePath: string): boolean {
     try {
-        const doc = yaml.load(fs.readFileSync(yamlFilePath, 'utf8')) as SidecarFile;
+        const doc = yaml.load(fs.readFileSync(yamlFilePath, 'utf8')) as SidecarFile
 
         if (doc.Private) {
-            return true;
+            return true
         }
 
-        return false;
+        return false
     } catch (e) {
-        console.log(e);
+        console.log(e)
 
-        throw e;
+        throw e
     }
 }
 
 const findImagePaths = async function(paths: string[]): Promise<string[]> {
-    const result: string[] = [];
+    const result: string[] = []
 
     for (const yamlPath of paths) {
         if (!yamlPath.startsWith(sidecarPath))
-            throw 'path doens\'t start correctly';
+            throw 'path doens\'t start correctly'
 
-        console.log(yamlPath);
+        console.log(yamlPath)
 
         // This file doesn't exist.
-        const imageLocationPath = path.join(photosPath, yamlPath.substring(sidecarPath.length))
+        const imageLocationPath = path.join(originalsPath, yamlPath.substring(sidecarPath.length))
 
-        console.log(imageLocationPath);
+        console.log(imageLocationPath)
 
         // But the file should be in this dir.
-        const imageLocationDir = path.dirname(imageLocationPath);
-        const potentialMatches = await fs.promises.readdir(imageLocationDir);
+        const imageLocationDir = path.dirname(imageLocationPath)
+        const potentialMatches = await fs.promises.readdir(imageLocationDir)
         for (const potentialMatch of potentialMatches) {
-            const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch));
+            const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch))
 
             if (stat.isDirectory())
-                continue;
+                continue
 
-            // console.log(yamlPath, potentialMatch);
+            // console.log(yamlPath, potentialMatch)
 
             // If the file name matches.
             if (path.basename(yamlPath).split('.')[0] === potentialMatch.split('.')[0]) {
-                result.push(path.join(imageLocationDir, potentialMatch));
+                result.push(path.join(imageLocationDir, potentialMatch))
             }
         }
     }
 
-    return result;
-};
+    return result
+}
 
 const moveImages = async function(imagePaths: string[]) {
-    const targetDir = path.join(photosPath, 'private');
+    const targetDir = path.join(originalsPath, 'private')
+
+    if (!fs.existsSync(targetDir))
+        await fs.promises.mkdir(targetDir)
 
     for (const imagePath of imagePaths) {
         // No need to move as the file is already there.
         if (path.dirname(imagePath) === targetDir)
-            continue;
+            continue
 
-        await fs.promises.rename(imagePath, path.join(targetDir, path.basename(imagePath)));
+        await fs.promises.rename(imagePath, path.join(targetDir, path.basename(imagePath)))
     }
-}:
+}
 
-const yamlPaths = await search(sidecarPath);
+const yamlPaths = await search(sidecarPath)
 
-const imagePaths = await findImagePaths(yamlPaths);
+const imagePaths = await findImagePaths(yamlPaths)
 
-// moveImages(imagePaths);
+moveImages(imagePaths)
