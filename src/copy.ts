@@ -1,14 +1,13 @@
 import * as yaml from 'js-yaml'
 import * as fs from 'fs'
 import * as path from 'path'
-import blessed from 'blessed'
 import { SidecarFile } from './types/SidecarFile'
 
-// const originalsPath = '/media/harvey/data/Images/Life/main/'
-// const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
+const originalsPath = '/media/harvey/data/Images/Life/main/'
+const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
 
-const originalsPath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/originals/'
-const storagePath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/storage/'
+// const originalsPath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/originals/'
+// const storagePath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/storage/'
 
 const sidecarPath = path.join(storagePath, 'sidecar/')
 
@@ -58,11 +57,14 @@ const findImagePaths = async function(paths: string[]): Promise<string[]> {
         if (!yamlPath.startsWith(sidecarPath))
             throw 'path doens\'t start correctly'
 
-        // This file doesn't exist.
-        const imageLocationPath = path.join(originalsPath, yamlPath.substring(sidecarPath.length))
+        // Assuming that the image exists in the same folder structure as the sidecar?
+        const imageLocationDir = path.dirname(
+            path.join(
+                originalsPath,
+                yamlPath.substring(sidecarPath.length)
+            )
+        )
 
-        // But the file should be in this dir.
-        const imageLocationDir = path.dirname(imageLocationPath)
         const potentialMatches = await fs.promises.readdir(imageLocationDir)
         for (const potentialMatch of potentialMatches) {
             const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch))
@@ -124,114 +126,4 @@ const moveEm = async function(yamlPaths: string[], folderName: string, func: Fun
     await moveImages(matchingImagePaths, folderName)
 }
 
-const program = blessed.program();
-
-// Create a screen object.
-const screen = blessed.screen({
-    smartCSR: true
-})
-
-screen.title = 'my window title';
-
-// Create a box perfectly centered horizontally and vertically.
-// const box = blessed.box({
-//   top: 'center',
-//   left: 'center',
-//   width: '50%',
-//   height: '50%',
-//   content: 'Hello {bold}world{/bold}!',
-//   tags: true,
-//   border: {
-//     type: 'line'
-//   },
-//   style: {
-//     fg: 'white',
-//     bg: 'magenta',
-//     border: {
-//       fg: '#f0f0f0'
-//     },
-//     hover: {
-//       bg: 'green'
-//     }
-//   }
-// });
-
-// screen.append(box);
-
-const form = blessed.form({
-  parent: screen,
-  keys: true,
-  left: 0,
-  top: 0,
-  width: 30,
-  height: 4,
-  bg: 'green',
-  content: 'Submit or cancel?'
-});
-
-const radioSet = blessed.radioset({
-    parent: form,
-})
-
-const privateRadio = blessed.radiobutton({
-    parent: radioSet,
-    text: 'Private',
-})
-
-const archivedRadio = blessed.radiobutton({
-    parent: radioSet,
-    top: 2,
-    text: 'Archived',
-})
-
-privateRadio.on('check', async function() {
-    form.detach()
-    screen.render()
-
-    // Create a box perfectly centered horizontally and vertically.
-    var box = blessed.box({
-        parent: screen,
-        top: 'center',
-        left: 'center',
-        width: '100%',
-        height: '100%',
-        content: 'Hello {bold}world{/bold}!',
-        tags: true,
-        border: {
-            type: 'line'
-        },
-        style: {
-            fg: 'white',
-            bg: 'magenta',
-            border: {
-                fg: '#f0f0f0'
-            },
-        }
-    });
-
-    // If box is focused, handle `enter`/`return` and give us some more content.
-    box.key('enter', function(ch, key) {
-        box.insertLine(1, 'foo');
-        box.insertLine(1, 'bar');
-        screen.render();
-    });
-
-    screen.render()
-
-    await moveEm(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
-});
-
-archivedRadio.on('check', async function() {
-    form.detach()
-    screen.render()
-    await moveEm(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
-});
-
-
-screen.key(['escape', 'q', 'C-c'], function(ch, key) {
-  return process.exit(0);
-});
-
-// Append our box to the screen.
-
-screen.render()
+await moveEm(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
