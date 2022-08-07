@@ -9,12 +9,20 @@
 
 - Can I reorganise photos in the filesystem from Photoprism? https://github.com/photoprism/photoprism/discussions/1942
     - > No
+- Where is edited metadata stored? https://github.com/photoprism/photoprism/issues/493
+    - > We don't modify originals to reduce the risk of file corruption
+    - YAML files are updated
 
 ## Aims
 
 - move private pictures into private folder
 - move archived pictures into archived folder
     - so I can backup before deleting archived pictures
+- rename images
+    - on import images are moved and renamed https://docs.photoprism.app/user-guide/library/ > imported files are given a unique file name and are sorted by year and month1
+    - if images are copied into the `originals/` folder and indexed, this does not occur
+    - this utility should fix images that were indexed and never imported
+    - since the YAML file still has the correct name, images should be renamed to the YAML file name,
 - organise photos into year/month folders
     - Photoprism seems to do this on first import, but if the date is wrong, and I update it, it won't be moved
         - need to test this assumption

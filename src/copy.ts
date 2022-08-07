@@ -66,6 +66,7 @@ const findImagePaths = async function(paths: string[]): Promise<string[]> {
         )
 
         const potentialMatches = await fs.promises.readdir(imageLocationDir)
+        let matchesFound = 0
         for (const potentialMatch of potentialMatches) {
             const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch))
 
@@ -75,10 +76,18 @@ const findImagePaths = async function(paths: string[]): Promise<string[]> {
             // If the file name matches.
             // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
             // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
+
+            // BUG:
+            // The name might also not match, example being `20160110_101506_EFAD56D8.yml` not matching name or location
+            // of `2016-01-10T10_15_06_20160110_101506.jpg`. YAML file says OriginalName is `20160110_101506` though.
             if (path.basename(yamlPath).split('.')[0] === potentialMatch.split('.')[0]) {
                 result.push(path.join(imageLocationDir, potentialMatch))
+                matchesFound++
             }
         }
+
+        if (matchesFound == 0)
+            throw 'Image not found for YAML.'
     }
 
     return result
@@ -121,6 +130,7 @@ const moveEm = async function(yamlPaths: string[], folderName: string, func: Fun
     const matchingImagePaths = await findImagePaths(matchingYamlPaths)
     console.log(`Found ${matchingImagePaths.length} image/video files that belong to ${folderName}`)
 
+    // Actually not a good check since burst images can find multiples (many images to one YAML).
     if (matchingYamlPaths.length > matchingImagePaths.length) {
         console.log(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} images/videos missing?`)
     }
