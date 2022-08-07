@@ -73,6 +73,8 @@ const findImagePaths = async function(paths: string[]): Promise<string[]> {
                 continue
 
             // If the file name matches.
+            // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
+            // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
             if (path.basename(yamlPath).split('.')[0] === potentialMatch.split('.')[0]) {
                 result.push(path.join(imageLocationDir, potentialMatch))
             }
