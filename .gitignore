@@ -1,4 +1,11 @@
-data/
-data-copy/
-dist/
-node_modules/
+/data/
+/data-copy/
+/dist/
+/node_modules/
+/photoprism-test/data/import/**
+!/photoprism-test/data/import/.gitkeep
+/photoprism-test/data/originals/**
+!/photoprism-test/data/originals/.gitkeep
+/photoprism-test/data/storage/**
+!/photoprism-test/data/storage/.gitkeep
+/photoprism-test/database/

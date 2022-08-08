@@ -6,8 +6,8 @@ import { SidecarFile } from './types/SidecarFile'
 const originalsPath = '/media/harvey/data/Images/Life/main/'
 const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
 
-// const originalsPath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/originals/'
-// const storagePath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/data/storage/'
+// const originalsPath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/photoprism-test/data/originals/'
+// const storagePath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/photoprism-test/data/storage/'
 
 const sidecarPath = path.join(storagePath, 'sidecar/')
 
@@ -76,18 +76,15 @@ const findImagePaths = async function(paths: string[]): Promise<string[]> {
             // If the file name matches.
             // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
             // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
-
-            // BUG:
-            // The name might also not match, example being `20160110_101506_EFAD56D8.yml` not matching name or location
-            // of `2016-01-10T10_15_06_20160110_101506.jpg`. YAML file says OriginalName is `20160110_101506` though.
             if (path.basename(yamlPath).split('.')[0] === potentialMatch.split('.')[0]) {
                 result.push(path.join(imageLocationDir, potentialMatch))
                 matchesFound++
             }
         }
 
+        // Somehow I have YAML files which are orphaned.
         if (matchesFound == 0)
-            throw 'Image not found for YAML.'
+            console.log(`No image found for ${yamlPath}`)
     }
 
     return result
@@ -114,7 +111,7 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
 
         console.log(`Moving image/video from ${imagePath} to ${newImagePath}`)
 
-        // await fs.promises.rename(imagePath, newImagePath)
+        await fs.promises.rename(imagePath, newImagePath)
     }
 }
 
@@ -139,3 +136,4 @@ const moveEm = async function(yamlPaths: string[], folderName: string, func: Fun
 }
 
 await moveEm(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
+await moveEm(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)

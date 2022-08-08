@@ -23,6 +23,7 @@
     - if images are copied into the `originals/` folder and indexed, this does not occur
     - this utility should fix images that were indexed and never imported
     - since the YAML file still has the correct name, images should be renamed to the YAML file name,
+    - calculate file hash using CRC32C https://github.com/photoprism/photoprism/discussions/2602
 - organise photos into year/month folders
     - Photoprism seems to do this on first import, but if the date is wrong, and I update it, it won't be moved
         - need to test this assumption
