@@ -38,6 +38,9 @@ const recursiveSearchSidecar = async function(folder: string): Promise<string[]>
     return paths
 }
 
+/**
+ * Get the contents of a YAML file.
+ */
 const readYamlFile = function(yamlFilePath: string): SidecarFile{
     try {
         const doc = yaml.load(fs.readFileSync(yamlFilePath, 'utf8')) as SidecarFile 
@@ -50,41 +53,49 @@ const readYamlFile = function(yamlFilePath: string): SidecarFile{
     }
 }
 
-const findImagePaths = async function(paths: string[]): Promise<string[]> {
+const findImagePath = async function(yamlPath: string): Promise<string[]> {
     const result: string[] = []
 
-    for (const yamlPath of paths) {
-        if (!yamlPath.startsWith(sidecarPath))
-            throw 'path doens\'t start correctly'
+    if (!yamlPath.startsWith(sidecarPath))
+        throw 'path doens\'t start correctly'
 
-        // Assuming that the image exists in the same folder structure as the sidecar?
-        const imageLocationDir = path.dirname(
-            path.join(
-                originalsPath,
-                yamlPath.substring(sidecarPath.length)
-            )
+    // Assuming that the image exists in the same folder structure as the sidecar.
+    const imageLocationDir = path.dirname(
+        path.join(
+            originalsPath,
+            yamlPath.substring(sidecarPath.length)
         )
+    )
 
-        const potentialMatches = await fs.promises.readdir(imageLocationDir)
-        let matchesFound = 0
-        for (const potentialMatch of potentialMatches) {
-            const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch))
+    const potentialMatches = await fs.promises.readdir(imageLocationDir)
+    let matchesFound = 0
+    for (const potentialMatch of potentialMatches) {
+        const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch))
 
-            if (stat.isDirectory())
-                continue
+        if (stat.isDirectory())
+            continue
 
-            // If the file name matches.
-            // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
-            // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
-            if (path.basename(yamlPath).split('.')[0] === potentialMatch.split('.')[0]) {
-                result.push(path.join(imageLocationDir, potentialMatch))
-                matchesFound++
-            }
+        // If the file name matches.
+        // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
+        // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
+        if (path.basename(yamlPath).split('.')[0] === potentialMatch.split('.')[0]) {
+            result.push(path.join(imageLocationDir, potentialMatch))
+            matchesFound++
         }
+    }
 
-        // Somehow I have YAML files which are orphaned.
-        if (matchesFound == 0)
-            console.log(`No image found for ${yamlPath}`)
+    // Somehow I have YAML files which are orphaned.
+    if (matchesFound == 0)
+        console.log(`No image found for ${yamlPath}`)
+
+    return result
+}
+
+const findImagePaths = async function(yamlPaths: string[]): Promise<string[]> {
+    let result: string[] = []
+
+    for (const yamlPath of yamlPaths) {
+        result = result.concat(await findImagePath(yamlPath))
     }
 
     return result
@@ -115,25 +126,29 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
     }
 }
 
-const yamlPaths = await recursiveSearchSidecar(sidecarPath)
-
-console.log(`Found ${yamlPaths.length} YAML files in ${sidecarPath}`)
-
-const moveEm = async function(yamlPaths: string[], folderName: string, func: Function) {
+const moveEm = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
     const matchingYamlPaths = yamlPaths
-        .filter(x => func(readYamlFile(x)))
+        .filter(x => filterFunction(readYamlFile(x)))
 
-    console.log(`Found ${matchingYamlPaths.length} YAML files that belong to ${folderName}`)
+    console.log(`Found ${matchingYamlPaths.length} YAML files that belong to ${targetFolderName}`)
     const matchingImagePaths = await findImagePaths(matchingYamlPaths)
-    console.log(`Found ${matchingImagePaths.length} image/video files that belong to ${folderName}`)
+    console.log(`Found ${matchingImagePaths.length} image/video files that belong to ${targetFolderName}`)
 
     // Actually not a good check since burst images can find multiples (many images to one YAML).
     if (matchingYamlPaths.length > matchingImagePaths.length) {
         console.log(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} images/videos missing?`)
     }
 
-    await moveImages(matchingImagePaths, folderName)
+    await moveImages(matchingImagePaths, targetFolderName)
 }
 
-await moveEm(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
-await moveEm(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
+const main = async function() {
+    const yamlPaths = await recursiveSearchSidecar(sidecarPath)
+
+    console.log(`Found ${yamlPaths.length} YAML files in ${sidecarPath}`)
+
+    await moveEm(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
+    await moveEm(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
+}
+
+await main()
