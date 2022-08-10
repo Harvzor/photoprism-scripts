@@ -1,4 +1,4 @@
-import { SideCarFileDetails } from "./SideCarFileDetails";
+import { sideCarFileDetails } from "./sideCarFileDetails";
 
 /*
 TakenAt: 2003-07-11T14:08:33Z
@@ -33,7 +33,7 @@ export interface SidecarFile {
     Quality: number;
     Favourite: boolean;
     Private: boolean;
-    Details: SideCarFileDetails;
+    Details: sideCarFileDetails;
     CreatedAt: Date;
     UpdatedAt: Date;
     DeletedAt: Date;

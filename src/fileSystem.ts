@@ -2,22 +2,16 @@ import * as yaml from 'js-yaml'
 import * as fs from 'fs'
 import * as path from 'path'
 import inquirer from 'inquirer'
-import { SidecarFile } from './types/SidecarFile'
 
-const originalsPath = '/media/harvey/data/Images/Life/main/'
-const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
-
-// const originalsPath = './photoprism-test/data/originals/'
-// const storagePath = './photoprism-test/data/storage/'
-
-const sidecarPath = path.join(storagePath, 'sidecar/')
+import { originalsPath, sidecarPath, } from './config'
+import { SidecarFile, } from './types/sidecarFile'
 
 /**
  * Find files matching the extension name.
  * @param  {string} folder
  * @param  {string} extensionNames Naming including leading dot, example: .yml
  */
-const recursiveSearch = async function(folder: string, extensionNames?: string[]): Promise<string[]> {
+export const recursiveSearch = async function(folder: string, extensionNames?: string[]): Promise<string[]> {
     let paths: string[] = []
 
     try {
@@ -186,7 +180,7 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
     console.log(`---`)
 }
 
-const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<string[]> {
+export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<string[]> {
     const orphanYamlPaths = []
     const mediaFiles = await recursiveSearch(originalsPath)
 
@@ -205,7 +199,7 @@ const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<strin
     return orphanYamlPaths
 }
 
-const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
+export const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
     const matchingYamlPaths = yamlPaths
         .filter(x => filterFunction(readYamlFile(x)))
 
@@ -220,70 +214,3 @@ const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFold
 
     await moveImages(matchingImagePaths, targetFolderName)
 }
-
-const imageMoverUi = async function() {
-    const choices = [
-        'Move private media files to private folder',
-        'Move archived media files to archived folder',
-        'Find orphan sidecar files',
-        'Organise media files and sidecar files into folders (ignoring private/archived)',
-        'Rename media files and sidecar files',
-    ]
-
-    return inquirer
-        .prompt({
-            name: 'select',
-            message: 'Select an option:',
-            type: 'list',
-            choices: choices,
-        })
-        .then(async answers => {
-            const yamlPaths = await recursiveSearch(sidecarPath, ['.yml'])
-            console.log(`Found ${yamlPaths.length} YAML files in ${sidecarPath}`)
-
-            switch(answers.select) {
-                case choices[0]:
-                    await findImagesAndMoveToTarget(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
-                    break;
-                case choices[1]:
-                    await findImagesAndMoveToTarget(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
-                    break;
-                case choices[2]:
-                    await findOrphanedYamlFiles(yamlPaths)
-                    break;
-                case choices[3]:
-                case choices[4]:
-                    console.error('Option not available yet')
-                    break;
-                default:
-                    throw 'Unhandled input'
-            }   
-        })
-}
-
-const main = async function() {
-    const choices = [
-        'Move media files',
-    ]
-
-    inquirer
-        .prompt({
-            name: 'select',
-            message: 'Select an option:',
-            type: 'list',
-            choices: choices,
-        })
-        .then(async answers => {
-            switch(answers.select) {
-                case choices[0]:
-                    await imageMoverUi()
-                    break;
-                default:
-                    throw 'Unhandled input'
-            }   
-
-            await main()
-        })
-}
-
-await main()
