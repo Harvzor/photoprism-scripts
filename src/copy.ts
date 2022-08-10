@@ -4,19 +4,20 @@ import * as path from 'path'
 import inquirer from 'inquirer'
 import { SidecarFile } from './types/SidecarFile'
 
-// const originalsPath = '/media/harvey/data/Images/Life/main/'
-// const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
+const originalsPath = '/media/harvey/data/Images/Life/main/'
+const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
 
-const originalsPath = './photoprism-test/data/originals/'
-const storagePath = './photoprism-test/data/storage/'
+// const originalsPath = './photoprism-test/data/originals/'
+// const storagePath = './photoprism-test/data/storage/'
 
 const sidecarPath = path.join(storagePath, 'sidecar/')
 
 /**
- * Find YAML files in the sidecar dir.
+ * Find files matching the extension name.
  * @param  {string} folder
+ * @param  {string} extensionNames Naming including leading dot, example: .yml
  */
-const recursiveSearchSidecar = async function(folder: string): Promise<string[]> {
+const recursiveSearch = async function(folder: string, extensionNames?: string[]): Promise<string[]> {
     let paths: string[] = []
 
     try {
@@ -26,10 +27,10 @@ const recursiveSearchSidecar = async function(folder: string): Promise<string[]>
             const stat = await fs.promises.stat(fileOrFolderPath)
 
             if (stat.isFile()) {
-                if (path.extname(fileOrFolderName) === '.yml')
+                if (extensionNames == undefined || extensionNames.some(x => x == path.extname(fileOrFolderName)))
                     paths.push(fileOrFolderPath)
             } else if (stat.isDirectory()) {
-                paths = paths.concat(await recursiveSearchSidecar(fileOrFolderPath))
+                paths = paths.concat(await recursiveSearch(fileOrFolderPath, extensionNames))
             }
         }
     } catch (err) {
@@ -187,11 +188,15 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
 
 const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<string[]> {
     const orphanYamlPaths = []
+    const mediaFiles = await recursiveSearch(originalsPath)
+
+    console.log(`Found ${mediaFiles.length} files in ${originalsPath}`)
 
     for (let yamlPath of yamlPaths) {
-        const matchingImagePaths = await findImagePath(yamlPath)
-
-        if (matchingImagePaths.length == 0) {
+        // If the file name matches.
+        // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
+        // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
+        if (!mediaFiles.some(mediaFile => path.basename(yamlPath).split('.')[0] === path.basename(mediaFile).split('.')[0])) {
             orphanYamlPaths.push(yamlPath)
             console.log(yamlPath)
         }
@@ -233,7 +238,7 @@ const imageMoverUi = async function() {
             choices: choices,
         })
         .then(async answers => {
-            const yamlPaths = await recursiveSearchSidecar(sidecarPath)
+            const yamlPaths = await recursiveSearch(sidecarPath, ['.yml'])
             console.log(`Found ${yamlPaths.length} YAML files in ${sidecarPath}`)
 
             switch(answers.select) {
