@@ -7,8 +7,8 @@ import { SidecarFile } from './types/SidecarFile'
 // const originalsPath = '/media/harvey/data/Images/Life/main/'
 // const storagePath = '/media/harvey/data/Images/PhotoPrism/storage/'
 
-const originalsPath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/photoprism-test/data/originals/'
-const storagePath = '/media/harvey/data/Dev/Tech/Node/photoprism-scripts/photoprism-test/data/storage/'
+const originalsPath = './photoprism-test/data/originals/'
+const storagePath = './photoprism-test/data/storage/'
 
 const sidecarPath = path.join(storagePath, 'sidecar/')
 
@@ -48,7 +48,7 @@ const readYamlFile = function(yamlFilePath: string): SidecarFile{
 
         return doc
     } catch (e) {
-        console.log(e)
+        console.error(e)
 
         throw e
     }
@@ -89,9 +89,9 @@ const findImagePath = async function(yamlPath: string): Promise<string[]> {
             }
         }
 
-        // Somehow I have YAML files which are orphaned.
-        if (matchesFound == 0)
-            console.log(`No image found for ${yamlPath}`)
+        // // Somehow I have YAML files which are orphaned.
+        // if (matchesFound == 0)
+        //     console.error(`No image found for ${yamlPath}`)
     } catch {
         // Folder does not exist.
         // YAMLs are orphans.
@@ -123,7 +123,6 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
     let auto = false
 
     const move = function(oldImagePath: string, newImagePath: string) {
-        console.log(`Moving media file from ${oldImagePath} to ${newImagePath}`)
         // await fs.promises.rename(imagePath, newImagePath)
     }
 
@@ -142,15 +141,17 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
 
     let i = 1
     for (const oldImagePath of imagePathsThatNeedMoving) {
-        console.log(`${i}/${imagePathsThatNeedMoving.length}`)
-
         const newImagePath = path.join(targetDir, path.basename(oldImagePath))
+
+        console.log(`---`)
+        console.log(`${i}/${imagePathsThatNeedMoving.length}`)
+        console.log(`Move media file`)
+        console.log(`| from ${oldImagePath}`)
+        console.log(`| to   ${newImagePath}`)
 
         if (auto) {
             move(oldImagePath, newImagePath)
         } else {
-            console.log(`Move media file from ${oldImagePath} to ${newImagePath}?`)
-
             await inquirer
                 .prompt({
                     name: 'select',
@@ -170,6 +171,8 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
                             auto = true
                             move(oldImagePath, newImagePath)
                             break;
+                        default:
+                            throw 'Unhandled input'
                     }   
                 })
         }
@@ -177,7 +180,24 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
         i++
     }
 
+    console.log(`---`)
     console.log(`Finished moving files`)
+    console.log(`---`)
+}
+
+const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<string[]> {
+    const orphanYamlPaths = []
+
+    for (let yamlPath of yamlPaths) {
+        const matchingImagePaths = await findImagePath(yamlPath)
+
+        if (matchingImagePaths.length == 0) {
+            orphanYamlPaths.push(yamlPath)
+            console.log(yamlPath)
+        }
+    }
+
+    return orphanYamlPaths
 }
 
 const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
@@ -190,7 +210,7 @@ const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFold
 
     // Actually not a good check since burst images can find multiples (many images to one YAML).
     if (matchingYamlPaths.length > matchingImagePaths.length) {
-        console.log(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} images/videos missing?`)
+        console.error(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} images/videos missing?`)
     }
 
     await moveImages(matchingImagePaths, targetFolderName)
@@ -198,8 +218,11 @@ const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFold
 
 const imageMoverUi = async function() {
     const choices = [
-        'Move private images to private folder',
-        'Move archived images to archived folder',
+        'Move private media files to private folder',
+        'Move archived media files to archived folder',
+        'Find orphan sidecar files',
+        'Organise media files and sidecar files into folders (ignoring private/archived)',
+        'Rename media files and sidecar files',
     ]
 
     return inquirer
@@ -213,28 +236,46 @@ const imageMoverUi = async function() {
             const yamlPaths = await recursiveSearchSidecar(sidecarPath)
             console.log(`Found ${yamlPaths.length} YAML files in ${sidecarPath}`)
 
-            if (answers.select == choices[0]) {
-                await findImagesAndMoveToTarget(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
-            } else if (answers.select == choices[1]) {
-                await findImagesAndMoveToTarget(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
-            }
+            switch(answers.select) {
+                case choices[0]:
+                    await findImagesAndMoveToTarget(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
+                    break;
+                case choices[1]:
+                    await findImagesAndMoveToTarget(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
+                    break;
+                case choices[2]:
+                    await findOrphanedYamlFiles(yamlPaths)
+                    break;
+                case choices[3]:
+                case choices[4]:
+                    console.error('Option not available yet')
+                    break;
+                default:
+                    throw 'Unhandled input'
+            }   
         })
 }
 
 const main = async function() {
+    const choices = [
+        'Move media files',
+    ]
+
     inquirer
         .prompt({
             name: 'select',
             message: 'Select an option:',
             type: 'list',
-            choices: [
-                'Move images',
-            ]
+            choices: choices,
         })
         .then(async answers => {
-            if (answers.select == 'Move images') {
-                await imageMoverUi()
-            }
+            switch(answers.select) {
+                case choices[0]:
+                    await imageMoverUi()
+                    break;
+                default:
+                    throw 'Unhandled input'
+            }   
 
             await main()
         })
