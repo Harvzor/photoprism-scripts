@@ -1,6 +1,6 @@
 import inquirer from 'inquirer'
 
-import { recursiveSearch, findImagesAndMoveToTarget, findOrphanedYamlFiles, moveFilesWithPrompt, } from './fileSystem'
+import { recursiveSearch, findImagesAndMoveToTarget, findOrphanedYamlFiles, moveFilesWithPrompt, renameFiles, } from './fileSystem'
 import { sidecarPath, sidecarLostAndFoundPath, } from './config'
 import { SidecarFile, } from './types/sidecarFile'
 
@@ -36,8 +36,10 @@ const imageMoverUi = async function() {
                     await moveFilesWithPrompt(orphanedYamlFiles, sidecarLostAndFoundPath, sidecarPath)
                     break;
                 case choices[3]:
-                case choices[4]:
                     console.error('Option not available yet')
+                    break;
+                case choices[4]:
+                    await renameFiles(yamlPaths)
                     break;
                 default:
                     throw 'Unhandled input'

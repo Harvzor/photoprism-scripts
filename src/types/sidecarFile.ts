@@ -1,3 +1,5 @@
+import { DateTime } from "luxon";
+
 import { sideCarFileDetails } from "./sideCarFileDetails";
 
 /*
@@ -34,7 +36,7 @@ export interface SidecarFile {
     Favourite: boolean;
     Private: boolean;
     Details: sideCarFileDetails;
-    CreatedAt: Date;
-    UpdatedAt: Date;
-    DeletedAt: Date;
+    CreatedAt: DateTime;
+    UpdatedAt: DateTime;
+    DeletedAt: DateTime;
 }

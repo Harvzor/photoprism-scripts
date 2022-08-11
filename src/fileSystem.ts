@@ -1,10 +1,16 @@
 import * as yaml from 'js-yaml'
 import * as fs from 'fs'
 import * as path from 'path'
+import crc32c from 'fast-crc32c'
 import inquirer from 'inquirer'
+import  { DateTime } from "luxon";
 
 import { originalsPath, sidecarPath, } from './config'
 import { SidecarFile, } from './types/sidecarFile'
+
+const removeExtension = function(path: string): string {
+    return path.split('.')[0]
+}
 
 /**
  * Find files matching the extension name.
@@ -78,7 +84,7 @@ const findImagePath = async function(yamlPath: string): Promise<string[]> {
             // If the file name matches.
             // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
             // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
-            if (path.basename(yamlPath).split('.')[0] === potentialMatch.split('.')[0]) {
+            if (removeExtension(path.basename(yamlPath)) === removeExtension(potentialMatch)) {
                 result.push(path.join(imageLocationDir, potentialMatch))
                 matchesFound++
             }
@@ -208,18 +214,62 @@ export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promis
     return orphanYamlPaths
 }
 
-export const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
-    const matchingYamlPaths = yamlPaths
-        .filter(x => filterFunction(readYamlFile(x)))
+const findImages = async function(yamlPaths: string[], filterFunction?: Function): Promise<string[]> {
+    const matchingYamlPaths = filterFunction
+        ? yamlPaths.filter(x => filterFunction(readYamlFile(x)))
+        : yamlPaths
 
-    console.log(`Found ${matchingYamlPaths.length} YAML files that belong to ${targetFolderName}`)
+    console.log(`Found ${matchingYamlPaths.length} YAML files`)
     const matchingImagePaths = await findImagePaths(matchingYamlPaths)
-    console.log(`Found ${matchingImagePaths.length} image/video files that belong to ${targetFolderName}`)
+    console.log(`Found ${matchingImagePaths.length} media files`)
 
     // Actually not a good check since burst images can find multiples (many images to one YAML).
     if (matchingYamlPaths.length > matchingImagePaths.length) {
-        console.error(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} images/videos missing?`)
+        console.error(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} media files missing?`)
     }
 
+    return matchingImagePaths
+}
+
+export const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
+    const matchingImagePaths = await findImages(yamlPaths, filterFunction) 
+
     await moveFilesWithPrompt(matchingImagePaths, path.join(originalsPath, targetFolderName))
+}
+
+export const renameFiles = async function(yamlPaths: string[]) {
+    const filesThatNeedRenaming = []
+
+    for (const yamlPath of yamlPaths) {
+        const imagePaths = await findImagePath(yamlPath)
+
+        if (imagePaths.length === 0)
+            return false
+
+        // BUG: this doesn't work with stacks
+        const imagePath = imagePaths[0]
+
+        const yamlFileName = removeExtension(path.basename(yamlPath))
+
+        const sidecarFile = readYamlFile(yamlPath)
+
+        // example: 20030711_140833_0F7C9F04.yml
+        const dateString = DateTime.fromISO(sidecarFile.TakenAt.toISOString()).toFormat('yyyyMMdd_HHmmss_')
+        // const dateString = sidecarFile.TakenAt.toFormat('yyyyMMdd_HHmmss_')
+
+        const fileBuffer = await fs.promises.readFile(imagePath)
+        const hash = crc32c.calculate(fileBuffer)
+            // To hexadecimal
+            .toString(16)
+            .toUpperCase()
+
+        const targetFileName = dateString + hash
+
+        if (yamlFileName != targetFileName)
+            filesThatNeedRenaming.push(imagePath)
+    }
+
+    console.log(filesThatNeedRenaming)
+
+    // const matchingImagePaths = await findImages(yamlPaths, (file: SidecarFile) => )
 }
