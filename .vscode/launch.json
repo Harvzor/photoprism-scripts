@@ -7,8 +7,12 @@
     {
       "type": "node",
       "request": "launch",
+      "runtimeArgs": [
+        "--experimental-specifier-resolution=node",
+      ] ,
       "name": "Launch Program",
-      "program": "${workspaceFolder}/src/copy.ts",
+      "console": "integratedTerminal", // So the debug console works with Inquirier.
+      "program": "${workspaceFolder}/src/index.ts",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"]
     }
