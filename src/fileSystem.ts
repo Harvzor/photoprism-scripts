@@ -106,10 +106,11 @@ const findImagePaths = async function(yamlPaths: string[]): Promise<string[]> {
 }
 
 /**
- * @param  {string[]} imagePaths Full image paths.
- * @param  {string} targetFolder The name of the folder which the images should be moved to.
+ * @param  {string[]} filePaths Full paths.
+ * @param  {string} targetDir Base path of where the files should be moved.
+ * @param  {string?} oldDir If defined, the the file will be moved from the old path, but retain the structure excluding the oldDir.
  */
-const moveImages = async function(imagePaths: string[], targetFolder: string) {
+export const moveFilesWithPrompt = async function(filePaths: string[], targetDir: string, oldDir?: string) {
     const choices = [
         'Move',
         'Don\'t move',
@@ -121,50 +122,58 @@ const moveImages = async function(imagePaths: string[], targetFolder: string) {
         // await fs.promises.rename(imagePath, newImagePath)
     }
 
-    const targetDir = path.join(originalsPath, targetFolder)
-
     if (!fs.existsSync(targetDir)) {
         console.log(`Target folder does not exist, creating ${targetDir}`)
         await fs.promises.mkdir(targetDir)
     }
 
-    const imagePathsThatNeedMoving = imagePaths
+    const filePathsThatNeedMoving = filePaths
         // No need to move as the file is already there.
-        .filter(imagePath => path.dirname(imagePath) != targetDir)
+        .filter(filePath => path.dirname(filePath) != targetDir)
 
-    console.log(`Found ${imagePathsThatNeedMoving.length} images that need moving`)
+    console.log(`Found ${filePathsThatNeedMoving.length} files that need moving`)
 
     let i = 1
-    for (const oldImagePath of imagePathsThatNeedMoving) {
-        const newImagePath = path.join(targetDir, path.basename(oldImagePath))
+    for (const oldFilePath of filePathsThatNeedMoving) {
+        const newFilePath = path.join(
+            targetDir,
+            oldDir
+                ? path.dirname(
+                    // oldFilePath may be: photoprism-test/data/storage/sidecar/example/IMG_20220804_113018.yml
+                    // so strip photoprism-test/data/storage/sidecar/ to get just example/IMG_20220804_113018.yml
+                    oldFilePath.replace(oldDir, '')
+                )
+                : '',
+            path.basename(oldFilePath)
+        )
 
         console.log(`---`)
-        console.log(`${i}/${imagePathsThatNeedMoving.length}`)
-        console.log(`Move media file`)
-        console.log(`| from ${oldImagePath}`)
-        console.log(`| to   ${newImagePath}`)
+        console.log(`${i}/${filePathsThatNeedMoving.length}`)
+        console.log(`Move file`)
+        console.log(`| from ${oldFilePath}`)
+        console.log(`| to   ${newFilePath}`)
 
         if (auto) {
-            move(oldImagePath, newImagePath)
+            move(oldFilePath, newFilePath)
         } else {
             await inquirer
                 .prompt({
                     name: 'select',
-                    message: `Move media file?`,
+                    message: `Move file?`,
                     type: 'list',
                     choices: choices,
                 })
                 .then(answers => {
                     switch(answers.select) {
                         case choices[0]:
-                            move(oldImagePath, newImagePath)
+                            move(oldFilePath, newFilePath)
                             break;
                         case choices[1]:
-                            console.log(`NOT moving image/video from ${oldImagePath} to ${newImagePath}`)
+                            console.log(`NOT moving file from ${oldFilePath} to ${newFilePath}`)
                             break;
                         case choices[2]:
                             auto = true
-                            move(oldImagePath, newImagePath)
+                            move(oldFilePath, newFilePath)
                             break;
                         default:
                             throw 'Unhandled input'
@@ -212,5 +221,5 @@ export const findImagesAndMoveToTarget = async function(yamlPaths: string[], tar
         console.error(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} images/videos missing?`)
     }
 
-    await moveImages(matchingImagePaths, targetFolderName)
+    await moveFilesWithPrompt(matchingImagePaths, path.join(originalsPath, targetFolderName))
 }

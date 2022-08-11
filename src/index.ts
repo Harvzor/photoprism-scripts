@@ -1,7 +1,7 @@
 import inquirer from 'inquirer'
 
-import { recursiveSearch, findImagesAndMoveToTarget, findOrphanedYamlFiles, } from './fileSystem'
-import { sidecarPath, } from './config'
+import { recursiveSearch, findImagesAndMoveToTarget, findOrphanedYamlFiles, moveFilesWithPrompt, } from './fileSystem'
+import { sidecarPath, sidecarLostAndFoundPath, } from './config'
 import { SidecarFile, } from './types/sidecarFile'
 
 const imageMoverUi = async function() {
@@ -32,7 +32,8 @@ const imageMoverUi = async function() {
                     await findImagesAndMoveToTarget(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
                     break;
                 case choices[2]:
-                    await findOrphanedYamlFiles(yamlPaths)
+                    const orphanedYamlFiles = await findOrphanedYamlFiles(yamlPaths)
+                    await moveFilesWithPrompt(orphanedYamlFiles, sidecarLostAndFoundPath, sidecarPath)
                     break;
                 case choices[3]:
                 case choices[4]:
