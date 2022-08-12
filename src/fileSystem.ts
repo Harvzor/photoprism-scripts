@@ -6,7 +6,7 @@ import inquirer from 'inquirer'
 import  { DateTime } from "luxon";
 
 import { originalsPath, sidecarPath, } from './config'
-import { SidecarFile, } from './types/sidecarFile'
+import { SidecarFile, SidecarFileRaw, } from './types/sidecarFile'
 
 const removeExtension = function(path: string): string {
     return path.split('.')[0]
@@ -43,9 +43,10 @@ export const recursiveSearch = async function(folder: string, extensionNames?: s
 /**
  * Get the contents of a YAML file.
  */
-const readYamlFile = function(yamlFilePath: string): SidecarFile{
+const readYamlFile = function(yamlFilePath: string): SidecarFile {
     try {
-        const doc = yaml.load(fs.readFileSync(yamlFilePath, 'utf8')) as SidecarFile 
+        const raw = yaml.load(fs.readFileSync(yamlFilePath, 'utf8')) as SidecarFileRaw
+        const doc = new SidecarFile(raw)
 
         return doc
     } catch (e) {
@@ -254,8 +255,7 @@ export const renameFiles = async function(yamlPaths: string[]) {
         const sidecarFile = readYamlFile(yamlPath)
 
         // example: 20030711_140833_0F7C9F04.yml
-        const dateString = DateTime.fromISO(sidecarFile.TakenAt.toISOString()).toFormat('yyyyMMdd_HHmmss_')
-        // const dateString = sidecarFile.TakenAt.toFormat('yyyyMMdd_HHmmss_')
+        const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
 
         const fileBuffer = await fs.promises.readFile(imagePath)
         const hash = crc32c.calculate(fileBuffer)
