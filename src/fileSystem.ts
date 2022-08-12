@@ -238,9 +238,67 @@ export const findImagesAndMoveToTarget = async function(yamlPaths: string[], tar
     await moveFilesWithPrompt(matchingImagePaths, path.join(originalsPath, targetFolderName))
 }
 
-export const renameFiles = async function(yamlPaths: string[]) {
-    const filesThatNeedRenaming = []
+export const renameFileWithPrompt = async function(
+    filePath: string,
+    newName: string,
+    shouldPrompt: boolean,
+    // Umm super ugly but only way I can have this function only doing 1 file at a time?
+    setShouldPrompt: Function,
+    currentIteration: number,
+    totalIterations: number
+) {
+    const choices = [
+        'Rename',
+        'Don\'t rename',
+        'Rename all (auto)',
+    ]
 
+    const rename = async function() {
+        // await fs.promises.rename(filePath, newFilePath)
+    }
+
+    const fileDir = path.dirname(filePath)
+    const extension = path.extname(filePath)
+    const newFilePath = path.join(fileDir, newName + extension)
+
+    console.log(`---`)
+    console.log(`${currentIteration}/${totalIterations}`)
+    console.log(`Rename file`)
+    console.log(`| from ${filePath}`)
+    console.log(`| to   ${newFilePath}`)
+
+    if (shouldPrompt) {
+        rename()
+    } else {
+        await inquirer
+            .prompt({
+                name: 'select',
+                message: `Rename file?`,
+                type: 'list',
+                choices: choices,
+            })
+            .then(answers => {
+                switch(answers.select) {
+                    case choices[0]:
+                        rename()
+                        break;
+                    case choices[1]:
+                        console.log(`NOT renaming file`)
+                        break;
+                    case choices[2]:
+                        setShouldPrompt(true)
+                        rename()
+                        break;
+                    default:
+                        throw 'Unhandled input'
+                }   
+            })
+    }
+}
+
+export const renameFilesWithPrompt = async function(yamlPaths: string[]) {
+    let shouldPrompt = false
+    let i = 1
     for (const yamlPath of yamlPaths) {
         const imagePaths = await findImagePath(yamlPath)
 
@@ -248,16 +306,14 @@ export const renameFiles = async function(yamlPaths: string[]) {
             return false
 
         // BUG: this doesn't work with stacks
-        const imagePath = imagePaths[0]
-
-        const yamlFileName = removeExtension(path.basename(yamlPath))
+        const filePath = imagePaths[0]
 
         const sidecarFile = readYamlFile(yamlPath)
 
         // example: 20030711_140833_0F7C9F04.yml
         const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
 
-        const fileBuffer = await fs.promises.readFile(imagePath)
+        const fileBuffer = await fs.promises.readFile(filePath)
         const hash = crc32c.calculate(fileBuffer)
             // To hexadecimal
             .toString(16)
@@ -265,11 +321,22 @@ export const renameFiles = async function(yamlPaths: string[]) {
 
         const targetFileName = dateString + hash
 
-        if (yamlFileName != targetFileName)
-            filesThatNeedRenaming.push(imagePath)
+        const currentFileName = removeExtension(path.basename(filePath))
+
+        if (currentFileName != targetFileName)
+            await renameFileWithPrompt(
+                filePath,
+                targetFileName,
+                shouldPrompt,
+                (value: boolean) => shouldPrompt = value,
+                i,
+                yamlPaths.length
+            )
+
+        i++
     }
 
-    console.log(filesThatNeedRenaming)
-
-    // const matchingImagePaths = await findImages(yamlPaths, (file: SidecarFile) => )
+    console.log(`---`)
+    console.log(`Finished renaming files`)
+    console.log(`---`)
 }
