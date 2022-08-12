@@ -4,6 +4,10 @@ import { recursiveSearch, findImagesAndMoveToTarget, findOrphanedYamlFiles, move
 import { sidecarPath, sidecarLostAndFoundPath, } from './config'
 import { SidecarFile, } from './types/sidecarFile'
 
+const logIndexReminder = function() {
+    console.log(`Remember to index again in PhotoPrism!`)
+}
+
 const imageMoverUi = async function() {
     const choices = [
         'Move private media files to private folder',
@@ -27,19 +31,23 @@ const imageMoverUi = async function() {
             switch(answers.select) {
                 case choices[0]:
                     await findImagesAndMoveToTarget(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
+                    logIndexReminder()
                     break;
                 case choices[1]:
                     await findImagesAndMoveToTarget(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
+                    logIndexReminder()
                     break;
                 case choices[2]:
                     const orphanedYamlFiles = await findOrphanedYamlFiles(yamlPaths)
                     await moveFilesWithPrompt(orphanedYamlFiles, sidecarLostAndFoundPath, sidecarPath)
+                    logIndexReminder()
                     break;
                 case choices[3]:
                     console.error('Option not available yet')
                     break;
                 case choices[4]:
                     await renameFiles(yamlPaths)
+                    logIndexReminder()
                     break;
                 default:
                     throw 'Unhandled input'
