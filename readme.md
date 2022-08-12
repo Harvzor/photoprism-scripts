@@ -9,9 +9,11 @@
 
 - Can I reorganise photos in the filesystem from Photoprism? https://github.com/photoprism/photoprism/discussions/1942
     - > No
-- Where is edited metadata stored? https://github.com/photoprism/photoprism/issues/493
+- Where is edited metadata stored?
+    - https://github.com/photoprism/photoprism/issues/493
     - > We don't modify originals to reduce the risk of file corruption
     - YAML files are updated
+    - will be supported in the future: https://github.com/photoprism/photoprism/discussions/1092
 
 ## Aims
 
