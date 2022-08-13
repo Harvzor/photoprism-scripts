@@ -296,6 +296,40 @@ export const renameFileWithPrompt = async function(
     }
 }
 
+// const findPrimaryImage = async (mediaPaths: string[]): string => {
+//     let primaryMediaPath = null
+
+//     for (const mediaPath of mediaPaths) {
+//         const extName = path.extname(mediaPath)
+
+//         switch (extName) {
+//             case '.jpg':
+//             case '.jpeg':
+//                 primaryMediaPath = mediaPath
+//                 break;
+//             case '.raw'
+//                 primaryMediaPath = mediaPath
+//                 break;
+//         }
+//     }
+//     // if result.Main == nil && f.IsJpeg() {
+//     //     result.Main = f
+//     // } else if f.IsRaw() {
+//     //     result.Main = f
+//     // } else if f.IsHEIF() {
+//     //     isHEIF = true
+//     //     result.Main = f
+//     // } else if f.IsImageOther() {
+//     //     result.Main = f
+//     // } else if f.IsVideo() && !isHEIF {
+//     //     result.Main = f
+//     // } else if result.Main != nil && f.IsJpeg() {
+//     //     if result.Main.IsJpeg() && len(result.Main.FileName()) > len(f.FileName()) {
+//     //         result.Main = f
+//     //     }
+//     // }
+// }
+
 export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
     let shouldPrompt = false
     let i = 1
