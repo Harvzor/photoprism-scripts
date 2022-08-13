@@ -1,4 +1,4 @@
-import { DateTime } from "luxon";
+import { DateTime, Zone } from "luxon";
 
 import { sideCarFileDetails } from "./sideCarFileDetails";
 
@@ -45,7 +45,7 @@ export interface SidecarFileRaw {
 export class SidecarFile implements SidecarFileRaw {
   constructor(obj: SidecarFileRaw) {
     this.TakenAt = obj.TakenAt
-    this.TakenAtDateTime = DateTime.fromJSDate(obj.TakenAt)
+    this.TakenAtDateTime = this.fromJSDateUTC(obj.TakenAt)
     this.TakenSrc = obj.TakenSrc
     this.UID = obj.UID
     this.Type = obj.Type
@@ -59,11 +59,17 @@ export class SidecarFile implements SidecarFileRaw {
     this.Private = obj.Private
     this.Details = obj.Details
     this.CreatedAt = obj.CreatedAt
-    this.CreatedAtDateTime = DateTime.fromJSDate(obj.CreatedAt)
+    this.CreatedAtDateTime = this.fromJSDateUTC(obj.CreatedAt)
     this.UpdatedAt = obj.UpdatedAt
-    this.UpdatedAtDateTime = DateTime.fromJSDate(obj.UpdatedAt)
+    this.UpdatedAtDateTime = this.fromJSDateUTC(obj.UpdatedAt)
     this.DeletedAt = obj.DeletedAt
-    this.DeletedAtDateTime = DateTime.fromJSDate(obj.DeletedAt)
+    this.DeletedAtDateTime = this.fromJSDateUTC(obj.DeletedAt)
+  }
+  // If the date stored in the YAML is 2015-11-20T05:20:30Z, the property will be put into local timezone in the default parameter.
+  // So probably I need to convert it back?
+  // TODO: Test with an image that wasn't taken in UTC timezone?
+  private fromJSDateUTC(jsDate: Date) {
+    return DateTime.fromJSDate(jsDate, { zone: 'UTC' })
   }
   TakenAt: Date;
   TakenAtDateTime: DateTime;

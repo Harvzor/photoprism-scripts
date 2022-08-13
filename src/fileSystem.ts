@@ -56,7 +56,7 @@ const readYamlFile = function(yamlFilePath: string): SidecarFile {
     }
 }
 
-const findImagePath = async function(yamlPath: string): Promise<string[]> {
+const findMediaPath = async function(yamlPath: string): Promise<string[]> {
     const result: string[] = []
 
     if (!yamlPath.startsWith(sidecarPath))
@@ -106,7 +106,7 @@ const findImagePaths = async function(yamlPaths: string[]): Promise<string[]> {
     let result: string[] = []
 
     for (const yamlPath of yamlPaths) {
-        result = result.concat(await findImagePath(yamlPath))
+        result = result.concat(await findMediaPath(yamlPath))
     }
 
     return result
@@ -296,42 +296,45 @@ export const renameFileWithPrompt = async function(
     }
 }
 
-export const renameFilesWithPrompt = async function(yamlPaths: string[]) {
+export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
     let shouldPrompt = false
     let i = 1
     for (const yamlPath of yamlPaths) {
-        const imagePaths = await findImagePath(yamlPath)
+        const mediaPath = await findMediaPath(yamlPath)
 
-        if (imagePaths.length === 0)
+        if (mediaPath.length === 0)
             return false
 
-        // BUG: this doesn't work with stacks
-        const filePath = imagePaths[0]
+        // Could be a stack.
+        // BUG: actually the name of all the files in the stack are the same, so the hash is only generated from one image. 👀
+        for (const mediaPaths of mediaPath) {
+            const sidecarFile = readYamlFile(yamlPath)
 
-        const sidecarFile = readYamlFile(yamlPath)
+            // example: 20030711_140833_0F7C9F04.yml
+            // Okay to use TakenAt and not Year/Month/Day - these properties are kept synced.
+            const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
 
-        // example: 20030711_140833_0F7C9F04.yml
-        const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
+            const fileBuffer = await fs.promises.readFile(mediaPaths)
+            const hash = crc32c.calculate(fileBuffer)
+                // To hexadecimal
+                .toString(16)
+                .toUpperCase()
 
-        const fileBuffer = await fs.promises.readFile(filePath)
-        const hash = crc32c.calculate(fileBuffer)
-            // To hexadecimal
-            .toString(16)
-            .toUpperCase()
+            const targetFileName = dateString + hash
 
-        const targetFileName = dateString + hash
+            const currentFileName = removeExtension(path.basename(mediaPaths))
 
-        const currentFileName = removeExtension(path.basename(filePath))
-
-        if (currentFileName != targetFileName)
-            await renameFileWithPrompt(
-                filePath,
-                targetFileName,
-                shouldPrompt,
-                (value: boolean) => shouldPrompt = value,
-                i,
-                yamlPaths.length
-            )
+            if (currentFileName != targetFileName) {
+                await renameFileWithPrompt(
+                    mediaPaths,
+                    targetFileName,
+                    shouldPrompt,
+                    (value: boolean) => shouldPrompt = value,
+                    i,
+                    yamlPaths.length
+                )
+            }
+        }
 
         i++
     }

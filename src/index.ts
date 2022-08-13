@@ -1,6 +1,6 @@
 import inquirer from 'inquirer'
 
-import { recursiveSearch, findImagesAndMoveToTarget, findOrphanedYamlFiles, moveFilesWithPrompt, renameFilesWithPrompt, } from './fileSystem'
+import { recursiveSearch, findImagesAndMoveToTarget, findOrphanedYamlFiles, moveFilesWithPrompt, renameMediaFilesWithPrompt, } from './fileSystem'
 import { sidecarPath, sidecarLostAndFoundPath, } from './config'
 import { SidecarFile, } from './types/sidecarFile'
 
@@ -46,7 +46,7 @@ const imageMoverUi = async function() {
                     console.error('Option not available yet')
                     break;
                 case choices[4]:
-                    await renameFilesWithPrompt(yamlPaths)
+                    await renameMediaFilesWithPrompt(yamlPaths)
                     logIndexReminder()
                     break;
                 default:

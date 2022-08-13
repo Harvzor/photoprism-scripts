@@ -17,10 +17,10 @@
 
 ## Aims
 
-- move private pictures into private folder
-- move archived pictures into archived folder
+- move private pictures into private folder ✅
+- move archived pictures into archived folder ✅
     - so I can backup before deleting archived pictures
-- rename images
+- rename images ✅
     - on import images are moved and renamed https://docs.photoprism.app/user-guide/library/ > imported files are given a unique file name and are sorted by year and month1
     - if images are copied into the `originals/` folder and indexed, this does not occur
     - this utility should fix images that were indexed and never imported
@@ -37,6 +37,7 @@
         - check this assumption
 - write script to compress photos
     - I copy the compressed images to my phone
+- find orphaned yaml files ✅
 
 ## Todo
 
