@@ -254,7 +254,7 @@ export const renameFileWithPrompt = async function(
     ]
 
     const rename = async function() {
-        // await fs.promises.rename(filePath, newFilePath)
+        await fs.promises.rename(filePath, newFilePath)
     }
 
     const fileDir = path.dirname(filePath)
