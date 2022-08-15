@@ -296,71 +296,95 @@ export const renameFileWithPrompt = async function(
     }
 }
 
-// const findPrimaryImage = async (mediaPaths: string[]): string => {
-//     let primaryMediaPath = null
+const findPrimaryImage = (mediaPaths: string[]): string | null => {
+    let primaryMediaPath = null
 
-//     for (const mediaPath of mediaPaths) {
-//         const extName = path.extname(mediaPath)
+    for (const mediaPath of mediaPaths) {
+        const extName = path.extname(mediaPath).toLocaleLowerCase()
 
-//         switch (extName) {
-//             case '.jpg':
-//             case '.jpeg':
-//                 primaryMediaPath = mediaPath
-//                 break;
-//             case '.raw'
-//                 primaryMediaPath = mediaPath
-//                 break;
-//         }
-//     }
-//     // if result.Main == nil && f.IsJpeg() {
-//     //     result.Main = f
-//     // } else if f.IsRaw() {
-//     //     result.Main = f
-//     // } else if f.IsHEIF() {
-//     //     isHEIF = true
-//     //     result.Main = f
-//     // } else if f.IsImageOther() {
-//     //     result.Main = f
-//     // } else if f.IsVideo() && !isHEIF {
-//     //     result.Main = f
-//     // } else if result.Main != nil && f.IsJpeg() {
-//     //     if result.Main.IsJpeg() && len(result.Main.FileName()) > len(f.FileName()) {
-//     //         result.Main = f
-//     //     }
-//     // }
-// }
+        if (primaryMediaPath == null
+            && (
+                extName == '.jpg'
+                || extName == 'jpeg'
+            )
+        ) {
+            primaryMediaPath = mediaPath
+        } else if (extName == '.raw') {
+            primaryMediaPath = mediaPath
+        } else if (extName == '.heif') {
+            primaryMediaPath = mediaPath
+        } else if (extName == '.png' || extName == '.gif') {
+            primaryMediaPath = mediaPath
+        } else if (extName == '.mp4' || extName == '.webm' || extName == '.mkv') {
+            primaryMediaPath = mediaPath
+        } else if (primaryMediaPath != null
+            && (
+                extName == '.jpg'
+                || extName == 'jpeg'
+            )
+        ) {
+            const primaryExtName = path.extname(mediaPath).toLocaleLowerCase()
+            if (primaryExtName == '.jpg' || primaryExtName== 'jpeg') {
+                if (path.basename(primaryExtName).length > path.basename(mediaPath).length) {
+                    primaryMediaPath = mediaPath
+                }
+            }
+        }
+    }
+
+    // Original Go code from PhotoPrism:
+    // if result.Main == nil && f.IsJpeg() {
+    //     result.Main = f
+    // } else if f.IsRaw() {
+    //     result.Main = f
+    // } else if f.IsHEIF() {
+    //     isHEIF = true
+    //     result.Main = f
+    // } else if f.IsImageOther() {
+    //     result.Main = f
+    // } else if f.IsVideo() && !isHEIF {
+    //     result.Main = f
+    // } else if result.Main != nil && f.IsJpeg() {
+    //     if result.Main.IsJpeg() && len(result.Main.FileName()) > len(f.FileName()) {
+    //         result.Main = f
+    //     }
+    // }
+
+    return primaryMediaPath
+}
 
 export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
     let shouldPrompt = false
     let i = 1
     for (const yamlPath of yamlPaths) {
-        const mediaPath = await findMediaPath(yamlPath)
+        const mediaPaths = await findMediaPath(yamlPath)
 
-        if (mediaPath.length === 0)
+        if (mediaPaths.length === 0)
             return false
+
+        const primaryMediaPath = findPrimaryImage(mediaPaths)!
+
+        const sidecarFile = readYamlFile(yamlPath)
+        // example: 20030711_140833_0F7C9F04.yml
+        // Okay to use TakenAt and not Year/Month/Day - these properties are kept synced.
+        const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
+
+        const fileBuffer = await fs.promises.readFile(primaryMediaPath)
+        const hash = crc32c.calculate(fileBuffer)
+            // To hexadecimal
+            .toString(16)
+            .toUpperCase()
+
+        const targetFileName = dateString + hash
 
         // Could be a stack.
         // BUG: actually the name of all the files in the stack are the same, so the hash is only generated from one image. 👀
-        for (const mediaPaths of mediaPath) {
-            const sidecarFile = readYamlFile(yamlPath)
-
-            // example: 20030711_140833_0F7C9F04.yml
-            // Okay to use TakenAt and not Year/Month/Day - these properties are kept synced.
-            const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
-
-            const fileBuffer = await fs.promises.readFile(mediaPaths)
-            const hash = crc32c.calculate(fileBuffer)
-                // To hexadecimal
-                .toString(16)
-                .toUpperCase()
-
-            const targetFileName = dateString + hash
-
-            const currentFileName = removeExtension(path.basename(mediaPaths))
+        for (const mediaPath of mediaPaths) {
+            const currentFileName = removeExtension(path.basename(mediaPath))
 
             if (currentFileName != targetFileName) {
                 await renameFileWithPrompt(
-                    mediaPaths,
+                    mediaPath,
                     targetFileName,
                     shouldPrompt,
                     (value: boolean) => shouldPrompt = value,
