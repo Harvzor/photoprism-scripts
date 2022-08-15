@@ -297,36 +297,36 @@ export const renameFileWithPrompt = async function(
 }
 
 const findPrimaryImage = (mediaPaths: string[]): string | null => {
-    let primaryMediaPath = null
+    let mainMediaPath = null
 
     for (const mediaPath of mediaPaths) {
         const extName = path.extname(mediaPath).toLocaleLowerCase()
 
-        if (primaryMediaPath == null
+        if (mainMediaPath == null
             && (
                 extName == '.jpg'
                 || extName == 'jpeg'
             )
         ) {
-            primaryMediaPath = mediaPath
+            mainMediaPath = mediaPath
         } else if (extName == '.raw') {
-            primaryMediaPath = mediaPath
+            mainMediaPath = mediaPath
         } else if (extName == '.heif') {
-            primaryMediaPath = mediaPath
+            mainMediaPath = mediaPath
         } else if (extName == '.png' || extName == '.gif') {
-            primaryMediaPath = mediaPath
+            mainMediaPath = mediaPath
         } else if (extName == '.mp4' || extName == '.webm' || extName == '.mkv') {
-            primaryMediaPath = mediaPath
-        } else if (primaryMediaPath != null
+            mainMediaPath = mediaPath
+        } else if (mainMediaPath != null
             && (
                 extName == '.jpg'
                 || extName == 'jpeg'
             )
         ) {
-            const primaryExtName = path.extname(mediaPath).toLocaleLowerCase()
-            if (primaryExtName == '.jpg' || primaryExtName== 'jpeg') {
-                if (path.basename(primaryExtName).length > path.basename(mediaPath).length) {
-                    primaryMediaPath = mediaPath
+            const mainExtName = path.extname(mainMediaPath).toLocaleLowerCase()
+            if (mainExtName == '.jpg' || mainExtName== 'jpeg') {
+                if (path.basename(mainMediaPath).length > path.basename(mediaPath).length) {
+                    mainMediaPath = mediaPath
                 }
             }
         }
@@ -350,12 +350,16 @@ const findPrimaryImage = (mediaPaths: string[]): string | null => {
     //     }
     // }
 
-    return primaryMediaPath
+    return mainMediaPath
 }
 
 export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
-    let shouldPrompt = false
-    let i = 1
+    interface CurrentAndTargetFile {
+        currentMediaPath: string,
+        targetFileName: string,
+    }
+    const currentAndTargetFiles: CurrentAndTargetFile[] = []
+
     for (const yamlPath of yamlPaths) {
         const mediaPaths = await findMediaPath(yamlPath)
 
@@ -383,16 +387,25 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
             const currentFileName = removeExtension(path.basename(mediaPath))
 
             if (currentFileName != targetFileName) {
-                await renameFileWithPrompt(
-                    mediaPath,
-                    targetFileName,
-                    shouldPrompt,
-                    (value: boolean) => shouldPrompt = value,
-                    i,
-                    yamlPaths.length
-                )
+                currentAndTargetFiles.push({
+                    currentMediaPath: mediaPath,
+                    targetFileName: targetFileName,
+                })
             }
         }
+    }
+
+    let shouldPrompt = false
+    let i = 1
+    for (const currentAndTargetFile of currentAndTargetFiles) {
+        await renameFileWithPrompt(
+            currentAndTargetFile.currentMediaPath,
+            currentAndTargetFile.targetFileName,
+            shouldPrompt,
+            (value: boolean) => shouldPrompt = value,
+            i,
+            currentAndTargetFiles.length
+        )
 
         i++
     }
