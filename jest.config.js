@@ -6,4 +6,7 @@ export default {
         useESM: true,
       },
     },
+    coverageReporters: [
+      "json-summary", 
+    ],
 };

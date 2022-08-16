@@ -1,5 +1,7 @@
 # Photoprism Scripts
 
+![Coverage](./coverage/badge-lines.sv)
+
 ## Versions
 
 - Node v18.7.0
