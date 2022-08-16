@@ -1,21 +1,54 @@
-import { removeExtension, } from "./fileSystem"
+import { jest } from '@jest/globals'
 
-test('removeExtension - png image', () => {
-    expect(removeExtension('file.png')).toBe('file')
+jest.doMock('fs')
+jest.doMock('fs/promises')
+
+// https://github.com/kulshekhar/ts-jest/issues/3206
+
+import * as fs from 'fs/promises'
+import { vol } from 'memfs'
+
+import {
+    recursiveSearch,
+    removeExtension,
+} from "./fileSystem"
+
+describe(removeExtension, () => {
+    test('png image', () => {
+        expect(removeExtension('file.png')).toBe('file')
+    })
+
+    test('relative path', () => {
+        expect(removeExtension('./path/to/file.png')).toBe('./path/to/file')
+    })
+
+    test('absolute path', () => {
+        expect(removeExtension('/path/to/file.png')).toBe('/path/to/file')
+    })
+
+    test('no extension', () => {
+        expect(removeExtension('file')).toBe('file')
+    })
+
+    test('2 extensions', () => {
+        expect(removeExtension('file.png.zip')).toBe('file.png')
+    })
 })
 
-test('removeExtension - relative path', () => {
-    expect(removeExtension('./path/to/file.png')).toBe('./path/to/file')
-})
 
-test('removeExtension - absolute path', () => {
-    expect(removeExtension('/path/to/file.png')).toBe('/path/to/file')
-})
+describe(recursiveSearch, () => {
+    beforeEach(() => {
+        vol.reset()
+    })
 
-test('removeExtension - no extension', () => {
-    expect(removeExtension('file')).toBe('file')
-})
+    test('asd', async () => {
+        // await vol.promises.mkdir('./test/')
+        // await vol.promises.writeFile('./test/test.jpg', '')
+        await fs.mkdir('./test/')
+        await fs.writeFile('./test/test.jpg', '')
 
-test('removeExtension - 2 extensions', () => {
-    expect(removeExtension('file.png.zip')).toBe('file.png')
+        const foundPaths = await recursiveSearch('./test/')
+
+        expect(foundPaths).toBe('./test/test.jpg')
+    })
 })
