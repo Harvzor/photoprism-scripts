@@ -7,8 +7,8 @@ import inquirer from 'inquirer'
 import { originalsPath, sidecarPath, } from './config'
 import { SidecarFile, SidecarFileRaw, } from './types/sidecarFile'
 
-export function removeExtension(path: string): string {
-    return path.split('.')[0]
+export function removeExtension(filePath: string): string {
+    return filePath.substring(0, filePath.lastIndexOf('.')) || filePath
 }
 
 /**
