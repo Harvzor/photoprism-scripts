@@ -43,9 +43,9 @@ export const recursiveSearch = async function(folder: string, extensionNames?: s
 /**
  * Get the contents of a YAML file.
  */
-const readYamlFile = function(yamlFilePath: string): SidecarFile {
+const readYamlFile = async (yamlFilePath: string): Promise<SidecarFile> => {
     try {
-        const raw = yaml.load(fs.readFileSync(yamlFilePath, 'utf8')) as SidecarFileRaw
+        const raw = yaml.load(await fs.promises.readFile(yamlFilePath, 'utf8')) as SidecarFileRaw
         const doc = new SidecarFile(raw)
 
         return doc
@@ -102,7 +102,7 @@ const findMediaPath = async function(yamlPath: string): Promise<string[]> {
     return result
 }
 
-const findImagePaths = async function(yamlPaths: string[]): Promise<string[]> {
+export const findImagePaths = async function(yamlPaths: string[]): Promise<string[]> {
     let result: string[] = []
 
     for (const yamlPath of yamlPaths) {
@@ -126,7 +126,7 @@ export const moveFilesWithPrompt = async function(filePaths: string[], targetDir
     let auto = false
 
     const move = function(oldImagePath: string, newImagePath: string) {
-        // await fs.promises.rename(imagePath, newImagePath)
+        // await fs.promises.rename(oldImagePath, newImagePath)
     }
 
     if (!fs.existsSync(targetDir)) {
@@ -215,10 +215,16 @@ export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promis
     return orphanYamlPaths
 }
 
-const findImages = async function(yamlPaths: string[], filterFunction?: Function): Promise<string[]> {
-    const matchingYamlPaths = filterFunction
-        ? yamlPaths.filter(x => filterFunction(readYamlFile(x)))
-        : yamlPaths
+const findImages = async (yamlPaths: string[], filterFunction?: Function): Promise<string[]> => {
+    const matchingYamlPaths: string[] = []
+
+    for (const yamlPath of yamlPaths) {
+        const yamlFile = await readYamlFile(yamlPath)
+
+        if (filterFunction === undefined || filterFunction(yamlFile)) {
+            matchingYamlPaths.push(yamlPath)
+        }
+    }
 
     console.log(`Found ${matchingYamlPaths.length} YAML files`)
     const matchingImagePaths = await findImagePaths(matchingYamlPaths)
@@ -368,7 +374,7 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
 
         const primaryMediaPath = findPrimaryImage(mediaPaths)!
 
-        const sidecarFile = readYamlFile(yamlPath)
+        const sidecarFile = await readYamlFile(yamlPath)
         // example: 20030711_140833_0F7C9F04.yml
         // Okay to use TakenAt and not Year/Month/Day - these properties are kept synced.
         const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
@@ -413,4 +419,35 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
     console.log(`---`)
     console.log(`Finished renaming files`)
     console.log(`---`)
+}
+
+export const organiseMedia = async (yamlPaths: string[]): Promise<string[]> => {
+    const releventYamlFiles: string[] = []
+
+    for (const yamlPath of yamlPaths) {
+        const sidecarFile = await readYamlFile(yamlPath)
+
+        if (sidecarFile.Private || sidecarFile.DeletedAt !== undefined)
+            continue
+
+        const month = sidecarFile.TakenAtDateTime.month
+        const pathShouldBe = path.join(
+            sidecarFile.TakenAtDateTime.year.toString(),
+            month < 10
+                ? '0' + month
+                : month.toString()
+        )
+
+        const fileDirWithoutSidecar = path.dirname(
+            // oldFilePath may be: photoprism-test/data/storage/sidecar/example/IMG_20220804_113018.yml
+            // so strip photoprism-test/data/storage/sidecar/ to get just example/IMG_20220804_113018.yml
+            yamlPath.replace(sidecarPath, '')
+        )
+
+        if (fileDirWithoutSidecar != pathShouldBe) {
+            releventYamlFiles.push(yamlPath)
+        }
+    }
+
+    return releventYamlFiles
 }

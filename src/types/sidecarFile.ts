@@ -72,14 +72,26 @@ export class SidecarFile implements SidecarFileRaw {
     return DateTime.fromJSDate(jsDate, { zone: 'UTC' })
   }
   TakenAt: Date;
+  /**
+   * Even if the taken datetime is technically unknown, this value will be equal to the index/import time.
+   */
   TakenAtDateTime: DateTime;
   TakenSrc: string;
   UID: string;
   Type: string;
   Title: string;
   OriginalName: string;
+  /**
+   * Could be -1 if unknown.
+   */
   Year: number;
+  /**
+   * Could be -1 if unknown.
+   */
   Month: number;
+  /**
+   * Could be -1 if unknown.
+   */
   Day: number;
   Quality: number;
   Favourite: boolean;
