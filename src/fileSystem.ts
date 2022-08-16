@@ -3,12 +3,11 @@ import * as fs from 'fs'
 import * as path from 'path'
 import crc32c from 'fast-crc32c'
 import inquirer from 'inquirer'
-import  { DateTime } from "luxon";
 
 import { originalsPath, sidecarPath, } from './config'
 import { SidecarFile, SidecarFileRaw, } from './types/sidecarFile'
 
-const removeExtension = function(path: string): string {
+export function removeExtension(path: string): string {
     return path.split('.')[0]
 }
 
@@ -17,7 +16,7 @@ const removeExtension = function(path: string): string {
  * @param  {string} folder
  * @param  {string} extensionNames Naming including leading dot, example: .yml
  */
-export const recursiveSearch = async function(folder: string, extensionNames?: string[]): Promise<string[]> {
+export const recursiveSearch = async (folder: string, extensionNames?: string[]): Promise<string[]> => {
     let paths: string[] = []
 
     try {
