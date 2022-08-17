@@ -42,7 +42,7 @@ export const recursiveSearch = async (folder: string, extensionNames?: string[])
 /**
  * Get the contents of a YAML file.
  */
-const readYamlFile = async (yamlFilePath: string): Promise<SidecarFile> => {
+export const readYamlFile = async (yamlFilePath: string): Promise<SidecarFile> => {
     try {
         const raw = yaml.load(await fs.promises.readFile(yamlFilePath, 'utf8')) as SidecarFileRaw
         const doc = new SidecarFile(raw)
