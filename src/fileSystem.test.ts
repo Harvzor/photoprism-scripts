@@ -38,12 +38,15 @@ describe(recursiveSearch, () => {
         vol.reset()
     })
 
-    test('asd', async () => {
-        await fs.promises.mkdir('/test/')
-        await fs.promises.writeFile('/test/test.jpg', '')
+    test('find images', async () => {
+        vol.fromJSON({
+            './foo.jpg': '',
+            './bar/baz.png': '',
+        }, '/app');
 
-        const foundPaths = await recursiveSearch('/test/')
+        const foundPaths = await recursiveSearch('/app/')
 
-        expect(foundPaths[0]).toBe('/test/test.jpg')
+        expect(foundPaths[1]).toBe('/app/foo.jpg')
+        expect(foundPaths[0]).toBe('/app/bar/baz.png')
     })
 })
