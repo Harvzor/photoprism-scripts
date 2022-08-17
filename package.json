@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "scripts": {
     "start": "tsc && node --experimental-vm-modules --experimental-specifier-resolution=node ./dist/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage && jest-coverage-badges"

@@ -3,8 +3,6 @@ import { jest } from '@jest/globals'
 jest.doMock('fs')
 jest.doMock('fs/promises')
 
-// https://github.com/kulshekhar/ts-jest/issues/3206
-
 import * as fs from 'fs/promises'
 import { vol } from 'memfs'
 
