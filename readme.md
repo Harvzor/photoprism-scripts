@@ -1,6 +1,6 @@
 # Photoprism Scripts
 
-![Coverage](./coverage/badge-lines.sv)
+![Coverage](./coverage/badge-lines.svg)
 
 ## Versions
 
