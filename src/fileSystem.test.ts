@@ -35,7 +35,7 @@ describe(removeExtension, () => {
 
 describe(recursiveSearch, () => {
     beforeEach(() => {
-        // vol.reset()
+        vol.reset()
     })
 
     test('asd', async () => {
