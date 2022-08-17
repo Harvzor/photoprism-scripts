@@ -1,10 +1,9 @@
 import { jest } from '@jest/globals'
-
-jest.doMock('fs')
-jest.doMock('fs/promises')
-
-import * as fs from 'fs/promises'
+import * as fs from 'fs'
 import { vol } from 'memfs'
+
+jest.mock('fs')
+jest.mock('fs/promises')
 
 import {
     recursiveSearch,
@@ -36,17 +35,15 @@ describe(removeExtension, () => {
 
 describe(recursiveSearch, () => {
     beforeEach(() => {
-        vol.reset()
+        // vol.reset()
     })
 
     test('asd', async () => {
-        // await vol.promises.mkdir('./test/')
-        // await vol.promises.writeFile('./test/test.jpg', '')
-        await fs.mkdir('./test/')
-        await fs.writeFile('./test/test.jpg', '')
+        await fs.promises.mkdir('/test/')
+        await fs.promises.writeFile('/test/test.jpg', '')
 
-        const foundPaths = await recursiveSearch('./test/')
+        const foundPaths = await recursiveSearch('/test/')
 
-        expect(foundPaths).toBe('./test/test.jpg')
+        expect(foundPaths[0]).toBe('/test/test.jpg')
     })
 })
