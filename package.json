@@ -7,8 +7,7 @@
     "fast-crc32c": "^2.0.0",
     "inquirer": "^8.0.1",
     "js-yaml": "^4.1.0",
-    "luxon": "^3.0.1",
-    "terminal-kit": "^2.5.1"
+    "luxon": "^3.0.1"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.0",
