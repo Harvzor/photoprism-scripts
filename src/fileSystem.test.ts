@@ -49,4 +49,15 @@ describe(recursiveSearch, () => {
         expect(foundPaths[1]).toBe('/app/foo.jpg')
         expect(foundPaths[0]).toBe('/app/bar/baz.png')
     })
+
+    test('filter', async () => {
+        vol.fromJSON({
+            './foo.jpg': '',
+            './bar.png': '',
+        }, '/app');
+
+        const foundPaths = await recursiveSearch('/app/', ['.png'])
+
+        expect(foundPaths[0]).toBe('/app/bar.png')
+    })
 })
