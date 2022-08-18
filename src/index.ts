@@ -9,14 +9,17 @@ import {
     organiseMedia,
     findImagePaths,
 } from './fileSystem'
-import { sidecarPath, sidecarLostAndFoundPath, originalsPath, } from './config'
 import { SidecarFile, } from './types/sidecarFile'
+import { env } from 'process'
+import dotenv from 'dotenv'
 
-const logIndexReminder = function() {
+dotenv.config()
+
+const logIndexReminder = () => {
     console.log(`Remember to index again in PhotoPrism!`)
 }
 
-const imageMoverUi = async function() {
+const imageMoverUi = async () => {
     const choices = [
         'Move private media files to private folder',
         'Move archived media files to archived folder',
@@ -33,8 +36,8 @@ const imageMoverUi = async function() {
             choices: choices,
         })
         .then(async answers => {
-            const yamlPaths = await recursiveSearch(sidecarPath, ['.yml'])
-            console.log(`Found ${yamlPaths.length} YAML files in ${sidecarPath}`)
+            const yamlPaths = await recursiveSearch(env.SIDECAR_PATH, ['.yml'])
+            console.log(`Found ${yamlPaths.length} YAML files in ${env.SIDECAR_PATH}`)
 
             switch(answers.select) {
                 case choices[0]:
@@ -47,14 +50,14 @@ const imageMoverUi = async function() {
                     break;
                 case choices[2]:
                     const orphanedYamlFiles = await findOrphanedYamlFiles(yamlPaths)
-                    await moveFilesWithPrompt(orphanedYamlFiles, sidecarLostAndFoundPath, sidecarPath)
+                    await moveFilesWithPrompt(orphanedYamlFiles, env.SIDECAR_LOST_AND_FOUND_PATH, env.SIDECAR_PATH)
                     logIndexReminder()
                     break;
                 case choices[3]:
                     const releventYamlFiles = await organiseMedia(yamlPaths)
                     const releventImagePaths = await findImagePaths(releventYamlFiles)
 
-                    await moveFilesWithPrompt(releventImagePaths, originalsPath, originalsPath)
+                    await moveFilesWithPrompt(releventImagePaths, env.ORIGINALS_PATH, env.ORIGINALS_PATH)
 
                     logIndexReminder()
                     break;
@@ -68,7 +71,7 @@ const imageMoverUi = async function() {
         })
 }
 
-const main = async function() {
+const main = async () => {
     const choices = [
         'Move media files',
     ]

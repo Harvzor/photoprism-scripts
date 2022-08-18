@@ -1,10 +1,10 @@
+import { env } from 'process'
 import * as yaml from 'js-yaml'
 import * as fs from 'fs'
 import * as path from 'path'
 import crc32c from 'fast-crc32c'
 import inquirer from 'inquirer'
 
-import { originalsPath, sidecarPath, } from './config'
 import { SidecarFile, SidecarFileRaw, } from './types/sidecarFile'
 
 export function removeExtension(filePath: string): string {
@@ -16,7 +16,7 @@ export function removeExtension(filePath: string): string {
  * @param  {string} folder
  * @param  {string} extensionNames Naming including leading dot, example: .yml
  */
-export const recursiveSearch = async (folder: string, extensionNames?: string[]): Promise<string[]> => {
+export const recursiveSearch = async(folder: string, extensionNames?: string[]): Promise<string[]> => {
     let paths: string[] = []
 
     try {
@@ -42,7 +42,7 @@ export const recursiveSearch = async (folder: string, extensionNames?: string[])
 /**
  * Get the contents of a YAML file.
  */
-export const readYamlFile = async (yamlFilePath: string): Promise<SidecarFile> => {
+export const readYamlFile = async(yamlFilePath: string): Promise<SidecarFile> => {
     try {
         const raw = yaml.load(await fs.promises.readFile(yamlFilePath, 'utf8')) as SidecarFileRaw
         const doc = new SidecarFile(raw)
@@ -55,17 +55,17 @@ export const readYamlFile = async (yamlFilePath: string): Promise<SidecarFile> =
     }
 }
 
-const findMediaPath = async function(yamlPath: string): Promise<string[]> {
+export const findMediaPath = async(yamlPath: string): Promise<string[]> => {
     const result: string[] = []
 
-    if (!yamlPath.startsWith(sidecarPath))
-        throw 'path doens\'t start correctly'
+    if (!yamlPath.startsWith(env.SIDECAR_PATH))
+        throw `path doens\'t start correctly, path is ${yamlPath} but should begin with ${env.SIDECAR_PATH}`
 
     // Assuming that the image exists in the same folder structure as the sidecar.
     const imageLocationDir = path.dirname(
         path.join(
-            originalsPath,
-            yamlPath.substring(sidecarPath.length)
+            env.ORIGINALS_PATH,
+            yamlPath.substring(env.SIDECAR_PATH.length)
         )
     )
 
@@ -197,9 +197,9 @@ export const moveFilesWithPrompt = async function(filePaths: string[], targetDir
 
 export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<string[]> {
     const orphanYamlPaths = []
-    const mediaFiles = await recursiveSearch(originalsPath)
+    const mediaFiles = await recursiveSearch(env.ORIGINALS_PATH)
 
-    console.log(`Found ${mediaFiles.length} files in ${originalsPath}`)
+    console.log(`Found ${mediaFiles.length} files in ${env.ORIGINALS_PATH}`)
 
     for (let yamlPath of yamlPaths) {
         // If the file name matches.
@@ -214,7 +214,7 @@ export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promis
     return orphanYamlPaths
 }
 
-const findImages = async (yamlPaths: string[], filterFunction?: Function): Promise<string[]> => {
+const findImages = async(yamlPaths: string[], filterFunction?: Function): Promise<string[]> => {
     const matchingYamlPaths: string[] = []
 
     for (const yamlPath of yamlPaths) {
@@ -240,7 +240,7 @@ const findImages = async (yamlPaths: string[], filterFunction?: Function): Promi
 export const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
     const matchingImagePaths = await findImages(yamlPaths, filterFunction) 
 
-    await moveFilesWithPrompt(matchingImagePaths, path.join(originalsPath, targetFolderName))
+    await moveFilesWithPrompt(matchingImagePaths, path.join(env.ORIGINALS_PATH, targetFolderName))
 }
 
 export const renameFileWithPrompt = async function(
@@ -420,7 +420,7 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
     console.log(`---`)
 }
 
-export const organiseMedia = async (yamlPaths: string[]): Promise<string[]> => {
+export const organiseMedia = async(yamlPaths: string[]): Promise<string[]> => {
     const releventYamlFiles: string[] = []
 
     for (const yamlPath of yamlPaths) {
@@ -440,7 +440,7 @@ export const organiseMedia = async (yamlPaths: string[]): Promise<string[]> => {
         const fileDirWithoutSidecar = path.dirname(
             // oldFilePath may be: photoprism-test/data/storage/sidecar/example/IMG_20220804_113018.yml
             // so strip photoprism-test/data/storage/sidecar/ to get just example/IMG_20220804_113018.yml
-            yamlPath.replace(sidecarPath, '')
+            yamlPath.replace(env.SIDECAR_PATH, '')
         )
 
         if (fileDirWithoutSidecar != pathShouldBe) {

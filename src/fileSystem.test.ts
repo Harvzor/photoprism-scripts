@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals'
-import * as fs from 'fs'
 import { vol } from 'memfs'
+import { env } from 'process'
 
 jest.mock('fs')
 jest.mock('fs/promises')
@@ -9,6 +9,7 @@ import {
     recursiveSearch,
     removeExtension,
     readYamlFile,
+    findMediaPath,
 } from "./fileSystem"
 
 describe(removeExtension, () => {
@@ -103,8 +104,63 @@ UpdatedAt: 2022-08-05T18:13:53.532791426Z`
 
         const data = await readYamlFile('/app/foo.yml')
 
-        console.log(data.TakenAt)
-
         expect(data.TakenAt).toEqual(new Date('2016-01-10T10:15:06Z'))
+    })
+})
+
+describe(findMediaPath, () => {
+    beforeEach(() => {
+        vol.reset()
+        env.ORIGINALS_PATH = '/app/originals/'
+        env.SIDECAR_PATH = '/app/storage/sidecar/'
+    })
+
+    test('find single', async() => {
+        vol.fromJSON({
+            './storage/sidecar/foo.yml': '',
+            './originals/foo.png': '',
+        }, '/app');
+
+        const mediaPath = await findMediaPath('/app/storage/sidecar/foo.yml')
+
+        expect(mediaPath.length).toBe(1)
+        expect(mediaPath[0]).toBe('/app/originals/foo.png')
+    })
+
+    test('find in folders', async() => {
+        vol.fromJSON({
+            './storage/sidecar/subdir/foo.yml': '',
+            './originals/subdir/foo.png': '',
+        }, '/app');
+
+        const mediaPath = await findMediaPath('/app/storage/sidecar/subdir/foo.yml')
+
+        expect(mediaPath.length).toBe(1)
+        expect(mediaPath[0]).toBe('/app/originals/subdir/foo.png')
+    })
+
+    test('find stack', async() => {
+        vol.fromJSON({
+            './storage/sidecar/foo.yml': '',
+            './originals/foo.png': '',
+            './originals/foo.jpg': '',
+        }, '/app');
+
+        const mediaPath = await findMediaPath('/app/storage/sidecar/foo.yml')
+
+        expect(mediaPath.length).toBe(2)
+        expect(mediaPath[0]).toBe('/app/originals/foo.jpg')
+        expect(mediaPath[1]).toBe('/app/originals/foo.png')
+    })
+
+    test('do not find', async() => {
+        vol.fromJSON({
+            './storage/sidecar/foo.yml': '',
+            './originals/subdir/foo.png': '',
+        }, '/app');
+
+        const mediaPath = await findMediaPath('/app/storage/sidecar/foo.yml')
+
+        expect(mediaPath.length).toBe(0)
     })
 })
