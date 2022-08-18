@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 
 import {
     recursiveSearch,
-    findImagesAndMoveToTarget,
+    findMediaFilesAndMoveToTarget,
     findOrphanedYamlFiles,
     moveFilesWithPrompt,
     renameMediaFilesWithPrompt,
@@ -42,11 +42,11 @@ const imageMoverUi = async () => {
 
             switch(answers.select) {
                 case choices[0]:
-                    await findImagesAndMoveToTarget(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
+                    await findMediaFilesAndMoveToTarget(yamlPaths, 'private', (file: SidecarFile) => file.Private === true)
                     logIndexReminder()
                     break;
                 case choices[1]:
-                    await findImagesAndMoveToTarget(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
+                    await findMediaFilesAndMoveToTarget(yamlPaths, 'archived', (file: SidecarFile) => file.DeletedAt !== undefined)
                     logIndexReminder()
                     break;
                 case choices[2]:

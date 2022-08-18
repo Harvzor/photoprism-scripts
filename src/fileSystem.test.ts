@@ -14,7 +14,9 @@ import {
     findMediaPath,
     moveFilesWithPrompt,
     findOrphanedYamlFiles,
+    findMediaFiles,
 } from "./fileSystem"
+import { SidecarFile } from './types/sidecarFile'
 
 describe(removeExtension, () => {
     test('png image', () => {
@@ -268,5 +270,49 @@ describe(findOrphanedYamlFiles, () => {
 
         expect(orphanedYamlFiles.length).toBe(1)
         expect(orphanedYamlFiles[0]).toBe('/app/storage/sidecar/subdir/bar.yml')
+    })
+})
+
+describe(findMediaFiles, () => {
+    const envBackup = env
+
+    beforeEach(() => {
+        jest.resetModules()
+        vol.reset()
+        env.ORIGINALS_PATH = '/app/originals/'
+        env.SIDECAR_PATH = '/app/storage/sidecar/'
+    })
+
+    afterEach(() => {
+        env = envBackup
+    })
+
+    test('find one', async() => {
+        vol.fromJSON({
+            './originals/foo.png': '',
+            './storage/sidecar/foo.yml': '',
+        }, '/app');
+
+        const mediaFiles = await findMediaFiles(['/app/storage/sidecar/foo.yml'])
+
+        expect(mediaFiles.length).toBe(1)
+        expect(mediaFiles[0]).toBe('/app/originals/foo.png')
+    })
+
+    test('find one - filtered by private', async() => {
+        vol.fromJSON({
+            './originals/foo.png': '',
+            './storage/sidecar/foo.yml': '',
+            './originals/bar.png': '',
+            './storage/sidecar/bar.yml': 'Private: true',
+        }, '/app');
+
+        const mediaFiles = await findMediaFiles(
+            ['/app/storage/sidecar/foo.yml', '/app/storage/sidecar/bar.yml'],
+            (file: SidecarFile) => file.Private
+        )
+
+        expect(mediaFiles.length).toBe(1)
+        expect(mediaFiles[0]).toBe('/app/originals/bar.png')
     })
 })

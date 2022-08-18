@@ -216,15 +216,19 @@ export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promis
     return orphanYamlPaths
 }
 
-const findImages = async(yamlPaths: string[], filterFunction?: Function): Promise<string[]> => {
-    const matchingYamlPaths: string[] = []
+export const findMediaFiles = async(yamlPaths: string[], filterFunction?: Function): Promise<string[]> => {
+    let matchingYamlPaths: string[] = []
 
-    for (const yamlPath of yamlPaths) {
-        const yamlFile = await readYamlFile(yamlPath)
+    if (filterFunction != undefined) {
+        for (const yamlPath of yamlPaths) {
+            const yamlFile = await readYamlFile(yamlPath)
 
-        if (filterFunction === undefined || filterFunction(yamlFile)) {
-            matchingYamlPaths.push(yamlPath)
+            if (filterFunction(yamlFile)) {
+                matchingYamlPaths.push(yamlPath)
+            }
         }
+    } else {
+        matchingYamlPaths = yamlPaths
     }
 
     logger.log(`Found ${matchingYamlPaths.length} YAML files`)
@@ -239,8 +243,8 @@ const findImages = async(yamlPaths: string[], filterFunction?: Function): Promis
     return matchingImagePaths
 }
 
-export const findImagesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
-    const matchingImagePaths = await findImages(yamlPaths, filterFunction) 
+export const findMediaFilesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
+    const matchingImagePaths = await findMediaFiles(yamlPaths, filterFunction) 
 
     await moveFilesWithPrompt(matchingImagePaths, path.join(env.ORIGINALS_PATH, targetFolderName))
 }
@@ -378,7 +382,7 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
         const sidecarFile = await readYamlFile(yamlPath)
         // example: 20030711_140833_0F7C9F04.yml
         // Okay to use TakenAt and not Year/Month/Day - these properties are kept synced.
-        const dateString = sidecarFile.TakenAtDateTime.toFormat('yyyyMMdd_HHmmss_')
+        const dateString = sidecarFile.TakenAtDateTime!.toFormat('yyyyMMdd_HHmmss_')
 
         const fileBuffer = await fs.promises.readFile(primaryMediaPath)
         const hash = crc32c.calculate(fileBuffer)
@@ -431,9 +435,9 @@ export const organiseMedia = async(yamlPaths: string[]): Promise<string[]> => {
         if (sidecarFile.Private || sidecarFile.DeletedAt !== undefined)
             continue
 
-        const month = sidecarFile.TakenAtDateTime.month
+        const month = sidecarFile.TakenAtDateTime!.month
         const pathShouldBe = path.join(
-            sidecarFile.TakenAtDateTime.year.toString(),
+            sidecarFile.TakenAtDateTime!.year.toString(),
             month < 10
                 ? '0' + month
                 : month.toString()
