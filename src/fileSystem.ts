@@ -101,7 +101,7 @@ export const findMediaPath = async(yamlPath: string): Promise<string[]> => {
     return result
 }
 
-export const findImagePaths = async function(yamlPaths: string[]): Promise<string[]> {
+export const findMediaPaths = async function(yamlPaths: string[]): Promise<string[]> {
     let result: string[] = []
 
     for (const yamlPath of yamlPaths) {
@@ -115,17 +115,17 @@ export const findImagePaths = async function(yamlPaths: string[]): Promise<strin
  * @param  {string[]} filePaths Full paths.
  * @param  {string} targetDir Base path of where the files should be moved.
  * @param  {string?} oldDir If defined, the the file will be moved from the old path, but retain the structure excluding the oldDir.
+ * @param  {boolean} auto If true, do not prompt.
  */
-export const moveFilesWithPrompt = async function(filePaths: string[], targetDir: string, oldDir?: string) {
+export const moveFilesWithPrompt = async (filePaths: string[], targetDir: string, oldDir?: string, auto = false) => {
     const choices = [
         'Move',
         'Don\'t move',
         'Move all (auto)',
     ]
-    let auto = false
 
-    const move = function(oldImagePath: string, newImagePath: string) {
-        // await fs.promises.rename(oldImagePath, newImagePath)
+    const move = async(oldImagePath: string, newImagePath: string) => {
+        await fs.promises.rename(oldImagePath, newImagePath)
     }
 
     if (!fs.existsSync(targetDir)) {
@@ -133,6 +133,7 @@ export const moveFilesWithPrompt = async function(filePaths: string[], targetDir
         await fs.promises.mkdir(targetDir)
     }
 
+    // TODO: could also check that the files to be moved even exist
     const filePathsThatNeedMoving = filePaths
         // No need to move as the file is already there.
         .filter(filePath => path.dirname(filePath) != targetDir)
@@ -160,7 +161,7 @@ export const moveFilesWithPrompt = async function(filePaths: string[], targetDir
         console.log(`| to   ${newFilePath}`)
 
         if (auto) {
-            move(oldFilePath, newFilePath)
+            await move(oldFilePath, newFilePath)
         } else {
             await inquirer
                 .prompt({
@@ -226,7 +227,7 @@ const findImages = async(yamlPaths: string[], filterFunction?: Function): Promis
     }
 
     console.log(`Found ${matchingYamlPaths.length} YAML files`)
-    const matchingImagePaths = await findImagePaths(matchingYamlPaths)
+    const matchingImagePaths = await findMediaPaths(matchingYamlPaths)
     console.log(`Found ${matchingImagePaths.length} media files`)
 
     // Actually not a good check since burst images can find multiples (many images to one YAML).

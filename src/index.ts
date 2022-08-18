@@ -7,7 +7,7 @@ import {
     moveFilesWithPrompt,
     renameMediaFilesWithPrompt,
     organiseMedia,
-    findImagePaths,
+    findMediaPaths,
 } from './fileSystem'
 import { SidecarFile, } from './types/sidecarFile'
 import { env } from 'process'
@@ -55,7 +55,7 @@ const imageMoverUi = async () => {
                     break;
                 case choices[3]:
                     const releventYamlFiles = await organiseMedia(yamlPaths)
-                    const releventImagePaths = await findImagePaths(releventYamlFiles)
+                    const releventImagePaths = await findMediaPaths(releventYamlFiles)
 
                     await moveFilesWithPrompt(releventImagePaths, env.ORIGINALS_PATH, env.ORIGINALS_PATH)
 
