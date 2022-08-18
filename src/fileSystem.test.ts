@@ -3,6 +3,7 @@ import { fs, vol } from 'memfs'
 let env = process.env
 // import { env } from 'process'
 
+jest.mock('./logger')
 jest.mock('fs')
 jest.mock('fs/promises')
 
@@ -12,6 +13,7 @@ import {
     readYamlFile,
     findMediaPath,
     moveFilesWithPrompt,
+    findOrphanedYamlFiles,
 } from "./fileSystem"
 
 describe(removeExtension, () => {
@@ -227,5 +229,44 @@ describe(moveFilesWithPrompt, () => {
         await expect(vol.promises.access('/app/foo.png')).resolves.not.toThrow()
         // New file should not have been created.
         await expect(vol.promises.access('/app/target/foo.png')).rejects.toThrow()
+    })
+})
+
+describe(findOrphanedYamlFiles, () => {
+    const envBackup = env
+
+    beforeEach(() => {
+        jest.resetModules()
+        vol.reset()
+        env.ORIGINALS_PATH = '/app/originals/'
+        env.SIDECAR_PATH = '/app/storage/sidecar/'
+    })
+
+    afterEach(() => {
+        env = envBackup
+    })
+
+    test('find none', async() => {
+        vol.fromJSON({
+            './originals/foo.png': '',
+            './storage/sidecar/foo.yml': '',
+        }, '/app');
+
+        const orphanedYamlFiles = await findOrphanedYamlFiles(['/app/storage/sidecar/foo.yml'])
+
+        expect(orphanedYamlFiles.length).toBe(0)
+    })
+
+    test('find one', async() => {
+        vol.fromJSON({
+            // Image has different name.
+            './originals/foo.png': '',
+            './storage/sidecar/subdir/bar.yml': '',
+        }, '/app');
+
+        const orphanedYamlFiles = await findOrphanedYamlFiles(['/app/storage/sidecar/subdir/bar.yml'])
+
+        expect(orphanedYamlFiles.length).toBe(1)
+        expect(orphanedYamlFiles[0]).toBe('/app/storage/sidecar/subdir/bar.yml')
     })
 })

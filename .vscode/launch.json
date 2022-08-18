@@ -7,14 +7,17 @@
     {
       "type": "node",
       "request": "launch",
-      "runtimeArgs": [
-        "--experimental-specifier-resolution=node",
-      ] ,
       "name": "Launch Program",
       "console": "integratedTerminal", // So the debug console works with Inquirier.
       "program": "${workspaceFolder}/src/index.ts",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Test",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
     }
   ]
 }

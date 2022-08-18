@@ -6,8 +6,9 @@ import crc32c from 'fast-crc32c'
 import inquirer from 'inquirer'
 
 import { SidecarFile, SidecarFileRaw, } from './types/sidecarFile'
+import * as logger from './logger'
 
-export function removeExtension(filePath: string): string {
+export const removeExtension = (filePath: string): string => {
     return filePath.substring(0, filePath.lastIndexOf('.')) || filePath
 }
 
@@ -33,7 +34,7 @@ export const recursiveSearch = async(folder: string, extensionNames?: string[]):
             }
         }
     } catch (err) {
-        console.error(err)
+        logger.error(err)
     }
 
     return paths
@@ -49,7 +50,7 @@ export const readYamlFile = async(yamlFilePath: string): Promise<SidecarFile> =>
 
         return doc
     } catch (e) {
-        console.error(e)
+        logger.error(e)
 
         throw e
     }
@@ -92,7 +93,7 @@ export const findMediaPath = async(yamlPath: string): Promise<string[]> => {
 
         // // Somehow I have YAML files which are orphaned.
         // if (matchesFound == 0)
-        //     console.error(`No image found for ${yamlPath}`)
+        //     logger.error(`No image found for ${yamlPath}`)
     } catch {
         // Folder does not exist.
         // YAMLs are orphans.
@@ -129,7 +130,7 @@ export const moveFilesWithPrompt = async (filePaths: string[], targetDir: string
     }
 
     if (!fs.existsSync(targetDir)) {
-        console.log(`Target folder does not exist, creating ${targetDir}`)
+        logger.log(`Target folder does not exist, creating ${targetDir}`)
         await fs.promises.mkdir(targetDir)
     }
 
@@ -138,7 +139,7 @@ export const moveFilesWithPrompt = async (filePaths: string[], targetDir: string
         // No need to move as the file is already there.
         .filter(filePath => path.dirname(filePath) != targetDir)
 
-    console.log(`Found ${filePathsThatNeedMoving.length} files that need moving`)
+    logger.log(`Found ${filePathsThatNeedMoving.length} files that need moving`)
 
     let i = 1
     for (const oldFilePath of filePathsThatNeedMoving) {
@@ -154,11 +155,11 @@ export const moveFilesWithPrompt = async (filePaths: string[], targetDir: string
             path.basename(oldFilePath)
         )
 
-        console.log(`---`)
-        console.log(`${i}/${filePathsThatNeedMoving.length}`)
-        console.log(`Move file`)
-        console.log(`| from ${oldFilePath}`)
-        console.log(`| to   ${newFilePath}`)
+        logger.log(`---`)
+        logger.log(`${i}/${filePathsThatNeedMoving.length}`)
+        logger.log(`Move file`)
+        logger.log(`| from ${oldFilePath}`)
+        logger.log(`| to   ${newFilePath}`)
 
         if (auto) {
             await move(oldFilePath, newFilePath)
@@ -176,7 +177,7 @@ export const moveFilesWithPrompt = async (filePaths: string[], targetDir: string
                             move(oldFilePath, newFilePath)
                             break;
                         case choices[1]:
-                            console.log(`NOT moving file from ${oldFilePath} to ${newFilePath}`)
+                            logger.log(`NOT moving file from ${oldFilePath} to ${newFilePath}`)
                             break;
                         case choices[2]:
                             auto = true
@@ -191,16 +192,16 @@ export const moveFilesWithPrompt = async (filePaths: string[], targetDir: string
         i++
     }
 
-    console.log(`---`)
-    console.log(`Finished moving files`)
-    console.log(`---`)
+    logger.log(`---`)
+    logger.log(`Finished moving files`)
+    logger.log(`---`)
 }
 
 export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<string[]> {
     const orphanYamlPaths = []
     const mediaFiles = await recursiveSearch(env.ORIGINALS_PATH)
 
-    console.log(`Found ${mediaFiles.length} files in ${env.ORIGINALS_PATH}`)
+    logger.log(`Found ${mediaFiles.length} files in ${env.ORIGINALS_PATH}`)
 
     for (let yamlPath of yamlPaths) {
         // If the file name matches.
@@ -208,7 +209,7 @@ export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promis
         // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
         if (!mediaFiles.some(mediaFile => path.basename(yamlPath).split('.')[0] === path.basename(mediaFile).split('.')[0])) {
             orphanYamlPaths.push(yamlPath)
-            console.log(yamlPath)
+            logger.log(yamlPath)
         }
     }
 
@@ -226,13 +227,13 @@ const findImages = async(yamlPaths: string[], filterFunction?: Function): Promis
         }
     }
 
-    console.log(`Found ${matchingYamlPaths.length} YAML files`)
+    logger.log(`Found ${matchingYamlPaths.length} YAML files`)
     const matchingImagePaths = await findMediaPaths(matchingYamlPaths)
-    console.log(`Found ${matchingImagePaths.length} media files`)
+    logger.log(`Found ${matchingImagePaths.length} media files`)
 
     // Actually not a good check since burst images can find multiples (many images to one YAML).
     if (matchingYamlPaths.length > matchingImagePaths.length) {
-        console.error(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} media files missing?`)
+        logger.error(`That means there's ${matchingYamlPaths.length - matchingImagePaths.length} media files missing?`)
     }
 
     return matchingImagePaths
@@ -267,11 +268,11 @@ export const renameFileWithPrompt = async function(
     const extension = path.extname(filePath)
     const newFilePath = path.join(fileDir, newName + extension)
 
-    console.log(`---`)
-    console.log(`${currentIteration}/${totalIterations}`)
-    console.log(`Rename file`)
-    console.log(`| from ${filePath}`)
-    console.log(`| to   ${newFilePath}`)
+    logger.log(`---`)
+    logger.log(`${currentIteration}/${totalIterations}`)
+    logger.log(`Rename file`)
+    logger.log(`| from ${filePath}`)
+    logger.log(`| to   ${newFilePath}`)
 
     if (shouldPrompt) {
         rename()
@@ -289,7 +290,7 @@ export const renameFileWithPrompt = async function(
                         rename()
                         break;
                     case choices[1]:
-                        console.log(`NOT renaming file`)
+                        logger.log(`NOT renaming file`)
                         break;
                     case choices[2]:
                         setShouldPrompt(true)
@@ -416,9 +417,9 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
         i++
     }
 
-    console.log(`---`)
-    console.log(`Finished renaming files`)
-    console.log(`---`)
+    logger.log(`---`)
+    logger.log(`Finished renaming files`)
+    logger.log(`---`)
 }
 
 export const organiseMedia = async(yamlPaths: string[]): Promise<string[]> => {

@@ -1,4 +1,6 @@
 import inquirer from 'inquirer'
+import { env } from 'process'
+import dotenv from 'dotenv'
 
 import {
     recursiveSearch,
@@ -10,13 +12,12 @@ import {
     findMediaPaths,
 } from './fileSystem'
 import { SidecarFile, } from './types/sidecarFile'
-import { env } from 'process'
-import dotenv from 'dotenv'
+import * as logger from './logger'
 
 dotenv.config()
 
 const logIndexReminder = () => {
-    console.log(`Remember to index again in PhotoPrism!`)
+    logger.log(`Remember to index again in PhotoPrism!`)
 }
 
 const imageMoverUi = async () => {
@@ -37,7 +38,7 @@ const imageMoverUi = async () => {
         })
         .then(async answers => {
             const yamlPaths = await recursiveSearch(env.SIDECAR_PATH, ['.yml'])
-            console.log(`Found ${yamlPaths.length} YAML files in ${env.SIDECAR_PATH}`)
+            logger.log(`Found ${yamlPaths.length} YAML files in ${env.SIDECAR_PATH}`)
 
             switch(answers.select) {
                 case choices[0]:
