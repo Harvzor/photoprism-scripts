@@ -94,7 +94,3 @@ const main = async function() {
 }
 
 main()
-    .then(text => {
-    })
-    .catch(err => {
-    });
