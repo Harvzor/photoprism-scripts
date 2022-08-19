@@ -12,7 +12,7 @@ import {
     removeExtension,
     readYamlFile,
     findMediaPath,
-    moveFilesWithPrompt,
+    moveFilesToTargetWithPrompt,
     findOrphanedYamlFiles,
     findMediaFiles,
 } from "./fileSystem"
@@ -178,7 +178,7 @@ describe(findMediaPath, () => {
     })
 })
 
-describe(moveFilesWithPrompt, () => {
+describe(moveFilesToTargetWithPrompt, () => {
     beforeEach(() => {
         vol.reset()
     })
@@ -188,7 +188,7 @@ describe(moveFilesWithPrompt, () => {
             './foo.png': '',
         }, '/app');
 
-        await moveFilesWithPrompt(['/app/foo.png'], '/app/target/', undefined, true)
+        await moveFilesToTargetWithPrompt(['/app/foo.png'], '/app/target/', undefined, true)
 
         await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
         await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
@@ -200,7 +200,7 @@ describe(moveFilesWithPrompt, () => {
             './bar.jpg': '',
         }, '/app');
 
-        await moveFilesWithPrompt(['/app/foo.png', '/app/bar.jpg'], '/app/target/', undefined, true)
+        await moveFilesToTargetWithPrompt(['/app/foo.png', '/app/bar.jpg'], '/app/target/', undefined, true)
 
         await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
         await expect(vol.promises.access('/app/bar.jpg')).rejects.toThrow()
@@ -213,7 +213,7 @@ describe(moveFilesWithPrompt, () => {
             './subdir/foo.png': '',
         }, '/app');
 
-        await moveFilesWithPrompt(['/app/subdir/foo.png'], '/app/target/', undefined, true)
+        await moveFilesToTargetWithPrompt(['/app/subdir/foo.png'], '/app/target/', undefined, true)
 
         await expect(vol.promises.access('/app/subdir/foo.png')).rejects.toThrow()
         await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
@@ -225,7 +225,7 @@ describe(moveFilesWithPrompt, () => {
         }, '/app');
 
         // Extension is different.
-        await expect(moveFilesWithPrompt(['/app/foo.jpg'], '/app/target/', undefined, true)).rejects.toThrowError()
+        await expect(moveFilesToTargetWithPrompt(['/app/foo.jpg'], '/app/target/', undefined, true)).rejects.toThrowError()
 
         // File shouldn't have moved.
         await expect(vol.promises.access('/app/foo.png')).resolves.not.toThrow()

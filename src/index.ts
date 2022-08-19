@@ -6,7 +6,7 @@ import {
     recursiveSearch,
     findMediaFilesAndMoveToTarget,
     findOrphanedYamlFiles,
-    moveFilesWithPrompt,
+    moveFilesToTargetWithPrompt,
     renameMediaFilesWithPrompt,
     organiseMedia,
     findMediaPaths,
@@ -51,14 +51,14 @@ const imageMoverUi = async () => {
                     break;
                 case choices[2]:
                     const orphanedYamlFiles = await findOrphanedYamlFiles(yamlPaths)
-                    await moveFilesWithPrompt(orphanedYamlFiles, env.SIDECAR_LOST_AND_FOUND_PATH, env.SIDECAR_PATH)
+                    await moveFilesToTargetWithPrompt(orphanedYamlFiles, env.SIDECAR_LOST_AND_FOUND_PATH, env.SIDECAR_PATH)
                     logIndexReminder()
                     break;
                 case choices[3]:
                     const releventYamlFiles = await organiseMedia(yamlPaths)
                     const releventImagePaths = await findMediaPaths(releventYamlFiles)
 
-                    await moveFilesWithPrompt(releventImagePaths, env.ORIGINALS_PATH, env.ORIGINALS_PATH)
+                    await moveFilesToTargetWithPrompt(releventImagePaths, env.ORIGINALS_PATH, env.ORIGINALS_PATH)
 
                     logIndexReminder()
                     break;

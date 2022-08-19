@@ -112,91 +112,6 @@ export const findMediaPaths = async function(yamlPaths: string[]): Promise<strin
     return result
 }
 
-/**
- * @param  {string[]} filePaths Full paths.
- * @param  {string} targetDir Base path of where the files should be moved.
- * @param  {string?} oldDir If defined, the the file will be moved from the old path, but retain the structure excluding the oldDir.
- * @param  {boolean} auto If true, do not prompt.
- */
-export const moveFilesWithPrompt = async (filePaths: string[], targetDir: string, oldDir?: string, auto = false) => {
-    const choices = [
-        'Move',
-        'Don\'t move',
-        'Move all (auto)',
-    ]
-
-    const move = async(oldImagePath: string, newImagePath: string) => {
-        await fs.promises.rename(oldImagePath, newImagePath)
-    }
-
-    if (!fs.existsSync(targetDir)) {
-        logger.log(`Target folder does not exist, creating ${targetDir}`)
-        await fs.promises.mkdir(targetDir)
-    }
-
-    // TODO: could also check that the files to be moved even exist
-    const filePathsThatNeedMoving = filePaths
-        // No need to move as the file is already there.
-        .filter(filePath => path.dirname(filePath) != targetDir)
-
-    logger.log(`Found ${filePathsThatNeedMoving.length} files that need moving`)
-
-    let i = 1
-    for (const oldFilePath of filePathsThatNeedMoving) {
-        const newFilePath = path.join(
-            targetDir,
-            oldDir
-                ? path.dirname(
-                    // oldFilePath may be: photoprism-test/data/storage/sidecar/example/IMG_20220804_113018.yml
-                    // so strip photoprism-test/data/storage/sidecar/ to get just example/IMG_20220804_113018.yml
-                    oldFilePath.replace(oldDir, '')
-                )
-                : '',
-            path.basename(oldFilePath)
-        )
-
-        logger.log(`---`)
-        logger.log(`${i}/${filePathsThatNeedMoving.length}`)
-        logger.log(`Move file`)
-        logger.log(`| from ${oldFilePath}`)
-        logger.log(`| to   ${newFilePath}`)
-
-        if (auto) {
-            await move(oldFilePath, newFilePath)
-        } else {
-            await inquirer
-                .prompt({
-                    name: 'select',
-                    message: `Move file?`,
-                    type: 'list',
-                    choices: choices,
-                })
-                .then(answers => {
-                    switch(answers.select) {
-                        case choices[0]:
-                            move(oldFilePath, newFilePath)
-                            break;
-                        case choices[1]:
-                            logger.log(`NOT moving file from ${oldFilePath} to ${newFilePath}`)
-                            break;
-                        case choices[2]:
-                            auto = true
-                            move(oldFilePath, newFilePath)
-                            break;
-                        default:
-                            throw 'Unhandled input'
-                    }   
-                })
-        }
-
-        i++
-    }
-
-    logger.log(`---`)
-    logger.log(`Finished moving files`)
-    logger.log(`---`)
-}
-
 export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promise<string[]> {
     const orphanYamlPaths = []
     const mediaFiles = await recursiveSearch(env.ORIGINALS_PATH)
@@ -246,12 +161,59 @@ export const findMediaFiles = async(yamlPaths: string[], filterFunction?: Functi
 export const findMediaFilesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
     const matchingImagePaths = await findMediaFiles(yamlPaths, filterFunction) 
 
-    await moveFilesWithPrompt(matchingImagePaths, path.join(env.ORIGINALS_PATH, targetFolderName))
+    await moveFilesToTargetWithPrompt(matchingImagePaths, path.join(env.ORIGINALS_PATH, targetFolderName))
 }
 
-export const renameFileWithPrompt = async function(
-    filePath: string,
-    newName: string,
+/**
+ * @param  {string[]} filePaths Full paths.
+ * @param  {string} targetDir Base path of where the files should be moved.
+ * @param  {string?} oldDir If defined, the the file will be moved from the old path, but retain the structure excluding the oldDir.
+ * @param  {boolean} auto If true, do not prompt.
+ */
+export const moveFilesToTargetWithPrompt = async (filePaths: string[], targetDir: string, oldDir?: string, auto = false) => {
+    // TODO: could also check that the files to be moved even exist
+    const filePathsThatNeedMoving = filePaths
+        // No need to move as the file is already there.
+        .filter(filePath => path.dirname(filePath) != targetDir)
+
+    logger.log(`Found ${filePathsThatNeedMoving.length} files that need moving`)
+
+    let i = 1
+    for (const oldFilePath of filePathsThatNeedMoving) {
+        const newFilePath = path.join(
+            targetDir,
+            oldDir
+                ? path.dirname(
+                    // oldFilePath may be: photoprism-test/data/storage/sidecar/example/IMG_20220804_113018.yml
+                    // so strip photoprism-test/data/storage/sidecar/ to get just example/IMG_20220804_113018.yml
+                    oldFilePath.replace(oldDir, '')
+                )
+                : '',
+            path.basename(oldFilePath)
+        )
+
+        await moveFileWithPrompt(
+            "Move",
+            oldFilePath,
+            newFilePath,
+            auto,
+            (value: boolean) => auto = value,
+            i,
+            filePathsThatNeedMoving.length
+        )
+
+        i++
+    }
+
+    logger.log(`---`)
+    logger.log(`Finished moving files`)
+    logger.log(`---`)
+}
+
+export const moveFileWithPrompt = async function(
+    action: string,
+    oldFilePath: string,
+    newFilePath: string,
     shouldPrompt: boolean,
     // Umm super ugly but only way I can have this function only doing 1 file at a time?
     setShouldPrompt: Function,
@@ -259,32 +221,35 @@ export const renameFileWithPrompt = async function(
     totalIterations: number
 ) {
     const choices = [
-        'Rename',
-        'Don\'t rename',
-        'Rename all (auto)',
+        action,
+        'Don\'t ' + action,
+        action + ' all (auto)',
     ]
 
     const rename = async function() {
-        await fs.promises.rename(filePath, newFilePath)
+        await fs.promises.rename(oldFilePath, newFilePath)
     }
 
-    const fileDir = path.dirname(filePath)
-    const extension = path.extname(filePath)
-    const newFilePath = path.join(fileDir, newName + extension)
+    // BUG: won't work if there's multiple subdirs that don't exist.
+    const targetDir = path.dirname(newFilePath)
+    if (!fs.existsSync(targetDir)) {
+        logger.log(`Target folder does not exist, creating ${targetDir}`)
+        await fs.promises.mkdir(targetDir)
+    }
 
     logger.log(`---`)
     logger.log(`${currentIteration}/${totalIterations}`)
-    logger.log(`Rename file`)
-    logger.log(`| from ${filePath}`)
+    logger.log(`${action} file`)
+    logger.log(`| from ${oldFilePath}`)
     logger.log(`| to   ${newFilePath}`)
 
     if (shouldPrompt) {
-        rename()
+        await rename()
     } else {
         await inquirer
             .prompt({
                 name: 'select',
-                message: `Rename file?`,
+                message: `${action} file?`,
                 type: 'list',
                 choices: choices,
             })
@@ -294,7 +259,7 @@ export const renameFileWithPrompt = async function(
                         rename()
                         break;
                     case choices[1]:
-                        logger.log(`NOT renaming file`)
+                        logger.log(`NOT ${action}ing file`)
                         break;
                     case choices[2]:
                         setShouldPrompt(true)
@@ -409,9 +374,14 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
     let shouldPrompt = false
     let i = 1
     for (const currentAndTargetFile of currentAndTargetFiles) {
-        await renameFileWithPrompt(
+        const fileDir = path.dirname(currentAndTargetFile.currentMediaPath)
+        const extension = path.extname(currentAndTargetFile.currentMediaPath)
+        const newFilePath = path.join(fileDir, currentAndTargetFile.targetFileName + extension)
+
+        await moveFileWithPrompt(
+            "Rename",
             currentAndTargetFile.currentMediaPath,
-            currentAndTargetFile.targetFileName,
+            newFilePath,
             shouldPrompt,
             (value: boolean) => shouldPrompt = value,
             i,
