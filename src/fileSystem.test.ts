@@ -15,6 +15,7 @@ import {
     moveFilesToTargetWithPrompt,
     findOrphanedYamlFiles,
     findMediaFiles,
+    findPrimaryImage,
 } from "./fileSystem"
 import { SidecarFile } from './types/sidecarFile'
 
@@ -178,62 +179,6 @@ describe(findMediaPath, () => {
     })
 })
 
-describe(moveFilesToTargetWithPrompt, () => {
-    beforeEach(() => {
-        vol.reset()
-    })
-
-    test('move single', async() => {
-        vol.fromJSON({
-            './foo.png': '',
-        }, '/app');
-
-        await moveFilesToTargetWithPrompt(['/app/foo.png'], '/app/target/', undefined, true)
-
-        await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
-        await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
-    })
-
-    test('move many', async() => {
-        vol.fromJSON({
-            './foo.png': '',
-            './bar.jpg': '',
-        }, '/app');
-
-        await moveFilesToTargetWithPrompt(['/app/foo.png', '/app/bar.jpg'], '/app/target/', undefined, true)
-
-        await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
-        await expect(vol.promises.access('/app/bar.jpg')).rejects.toThrow()
-        await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
-        await expect(vol.promises.access('/app/target/bar.jpg')).resolves.not.toThrow()
-    })
-
-    test('move from folder', async() => {
-        vol.fromJSON({
-            './subdir/foo.png': '',
-        }, '/app');
-
-        await moveFilesToTargetWithPrompt(['/app/subdir/foo.png'], '/app/target/', undefined, true)
-
-        await expect(vol.promises.access('/app/subdir/foo.png')).rejects.toThrow()
-        await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
-    })
-
-    test('do not move', async() => {
-        vol.fromJSON({
-            './foo.png': '',
-        }, '/app');
-
-        // Extension is different.
-        await expect(moveFilesToTargetWithPrompt(['/app/foo.jpg'], '/app/target/', undefined, true)).rejects.toThrowError()
-
-        // File shouldn't have moved.
-        await expect(vol.promises.access('/app/foo.png')).resolves.not.toThrow()
-        // New file should not have been created.
-        await expect(vol.promises.access('/app/target/foo.png')).rejects.toThrow()
-    })
-})
-
 describe(findOrphanedYamlFiles, () => {
     const envBackup = env
 
@@ -314,5 +259,91 @@ describe(findMediaFiles, () => {
 
         expect(mediaFiles.length).toBe(1)
         expect(mediaFiles[0]).toBe('/app/originals/bar.png')
+    })
+})
+
+describe(moveFilesToTargetWithPrompt, () => {
+    beforeEach(() => {
+        vol.reset()
+    })
+
+    test('move single', async() => {
+        vol.fromJSON({
+            './foo.png': '',
+        }, '/app');
+
+        await moveFilesToTargetWithPrompt(['/app/foo.png'], '/app/target/', undefined, true)
+
+        await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
+        await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
+    })
+
+    test('move many', async() => {
+        vol.fromJSON({
+            './foo.png': '',
+            './bar.jpg': '',
+        }, '/app');
+
+        await moveFilesToTargetWithPrompt(['/app/foo.png', '/app/bar.jpg'], '/app/target/', undefined, true)
+
+        await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
+        await expect(vol.promises.access('/app/bar.jpg')).rejects.toThrow()
+        await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
+        await expect(vol.promises.access('/app/target/bar.jpg')).resolves.not.toThrow()
+    })
+
+    test('move from folder', async() => {
+        vol.fromJSON({
+            './subdir/foo.png': '',
+        }, '/app');
+
+        await moveFilesToTargetWithPrompt(['/app/subdir/foo.png'], '/app/target/', undefined, true)
+
+        await expect(vol.promises.access('/app/subdir/foo.png')).rejects.toThrow()
+        await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
+    })
+
+    test('do not move', async() => {
+        vol.fromJSON({
+            './foo.png': '',
+        }, '/app');
+
+        // Extension is different.
+        await expect(moveFilesToTargetWithPrompt(['/app/foo.jpg'], '/app/target/', undefined, true)).rejects.toThrowError()
+
+        // File shouldn't have moved.
+        await expect(vol.promises.access('/app/foo.png')).resolves.not.toThrow()
+        // New file should not have been created.
+        await expect(vol.promises.access('/app/target/foo.png')).rejects.toThrow()
+    })
+})
+
+describe(findPrimaryImage, () => {
+    test('jpg vs png', async() => {
+        const primaryImage = findPrimaryImage([
+            '/foo.jpg',
+            '/foo.png',
+        ])
+
+        expect(primaryImage).toBe('/foo.png')
+    })
+
+    test('png vs jpg', async() => {
+        const primaryImage = findPrimaryImage([
+            '/foo.jpg',
+            '/foo.png',
+        ])
+
+        expect(primaryImage).toBe('/foo.png')
+    })
+
+    // Don't know why though.
+    test('jpg with shorter name should be preferred', async() => {
+        const primaryImage = findPrimaryImage([
+            '/foo.jpg',
+            '/foo (2).jpg',
+        ])
+
+        expect(primaryImage).toBe('/foo.jpg')
     })
 })

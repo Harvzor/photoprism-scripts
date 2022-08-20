@@ -272,7 +272,7 @@ export const moveFileWithPrompt = async function(
     }
 }
 
-const findPrimaryImage = (mediaPaths: string[]): string | null => {
+export const findPrimaryImage = (mediaPaths: string[]): string | null => {
     let mainMediaPath = null
 
     for (const mediaPath of mediaPaths) {
