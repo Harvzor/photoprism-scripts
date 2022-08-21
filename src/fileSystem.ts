@@ -432,7 +432,7 @@ interface CurrentAndTargetPath {
     targetPath: string,
 }
 
-export const organiseMedia = async(yamlAndMediaPaths: YamlAndMediaPath[]): Promise<CurrentAndTargetPath[]> => {
+export const findMediaThatNeedsMoving = async(yamlAndMediaPaths: YamlAndMediaPath[]): Promise<CurrentAndTargetPath[]> => {
     const toBeMoved: CurrentAndTargetPath[] = []
 
     for (const yamlAndMediaPath of yamlAndMediaPaths) {

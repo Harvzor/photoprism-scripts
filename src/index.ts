@@ -8,8 +8,7 @@ import {
     findOrphanedYamlFiles,
     moveFilesToTargetWithPrompt,
     renameMediaFilesWithPrompt,
-    organiseMedia,
-    findMediaPath,
+    findMediaThatNeedsMoving,
     findMediaPaths,
     moveFilesWithPrompt,
 } from './fileSystem'
@@ -59,7 +58,7 @@ const imageMoverUi = async () => {
                 case choices[3]:
                     let shouldPrompt = true
                     const yamlAndMediaPaths = await findMediaPaths(yamlPaths);
-                    const currentMediaPathsAndTaget = await organiseMedia(yamlAndMediaPaths)
+                    const currentMediaPathsAndTaget = await findMediaThatNeedsMoving(yamlAndMediaPaths)
 
                     await moveFilesWithPrompt(
                         'Move',

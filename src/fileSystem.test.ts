@@ -16,7 +16,7 @@ import {
     findOrphanedYamlFiles,
     findMediaFiles,
     findPrimaryImage,
-    organiseMedia,
+    findMediaThatNeedsMoving,
 } from "./fileSystem"
 import { SidecarFile } from './types/sidecarFile'
 
@@ -351,7 +351,7 @@ describe(findPrimaryImage, () => {
     })
 })
 
-describe(organiseMedia, () => {
+describe(findMediaThatNeedsMoving, () => {
     const envBackup = env
 
     beforeEach(() => {
@@ -373,7 +373,7 @@ Private: false
 Archived: false`,
         }, '/app');
 
-        const organised = await organiseMedia([{
+        const organised = await findMediaThatNeedsMoving([{
             yamlPath: '/app/storage/sidecar/foo.yml',
             mediaPaths: ['/app/originals/foo.png']
         }])
@@ -392,7 +392,7 @@ Private: false
 Archived: false`,
         }, '/app');
 
-        const organised = await organiseMedia([{
+        const organised = await findMediaThatNeedsMoving([{
             yamlPath: '/app/storage/sidecar/foo.yml',
             mediaPaths: [
                 '/app/originals/foo.png',
@@ -414,7 +414,7 @@ Archived: false`,
 Private: false`,
         }, '/app');
 
-        const organised = await organiseMedia([{
+        const organised = await findMediaThatNeedsMoving([{
             yamlPath: '/app/storage/sidecar/foo.yml',
             mediaPaths: ['/app/originals/2016/01/foo.png']
         }])
@@ -429,7 +429,7 @@ Private: false`,
 Private: true`,
         }, '/app');
 
-        const organised = await organiseMedia([{
+        const organised = await findMediaThatNeedsMoving([{
             yamlPath: '/app/storage/sidecar/foo.yml',
             mediaPaths: ['/app/originals/private/foo.png']
         }])
@@ -445,7 +445,7 @@ Private: false
 DeletedAt: 2020-01-01T12:00:00Z`,
         }, '/app');
 
-        const organised = await organiseMedia([{
+        const organised = await findMediaThatNeedsMoving([{
             yamlPath: '/app/storage/sidecar/foo.yml',
             mediaPaths: ['/app/originals/private/foo.png']
         }])
