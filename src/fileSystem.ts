@@ -102,11 +102,19 @@ export const findMediaPath = async(yamlPath: string): Promise<string[]> => {
     return result
 }
 
-export const findMediaPaths = async function(yamlPaths: string[]): Promise<string[]> {
-    let result: string[] = []
+interface YamlAndMediaPath {
+    yamlPath: string,
+    mediaPaths: string[],
+}
+
+export const findMediaPaths = async function(yamlPaths: string[]): Promise<YamlAndMediaPath[]> {
+    let result: YamlAndMediaPath[] = []
 
     for (const yamlPath of yamlPaths) {
-        result = result.concat(await findMediaPath(yamlPath))
+        result.push({
+            yamlPath: yamlPath,
+            mediaPaths: await findMediaPath(yamlPath)
+        })
     }
 
     return result
@@ -131,7 +139,7 @@ export const findOrphanedYamlFiles = async function(yamlPaths: string[]): Promis
     return orphanYamlPaths
 }
 
-export const findMediaFiles = async(yamlPaths: string[], filterFunction?: Function): Promise<string[]> => {
+export const findMediaFiles = async(yamlPaths: string[], filterFunction?: Function): Promise<YamlAndMediaPath[]> => {
     let matchingYamlPaths: string[] = []
 
     if (filterFunction != undefined) {
@@ -161,7 +169,7 @@ export const findMediaFiles = async(yamlPaths: string[], filterFunction?: Functi
 export const findMediaFilesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
     const matchingImagePaths = await findMediaFiles(yamlPaths, filterFunction) 
 
-    await moveFilesToTargetWithPrompt(matchingImagePaths, path.join(env.ORIGINALS_PATH, targetFolderName))
+    await moveFilesToTargetWithPrompt(matchingImagePaths.map(x => x.mediaPaths).flat(), path.join(env.ORIGINALS_PATH, targetFolderName))
 }
 
 /**
@@ -208,6 +216,29 @@ export const moveFilesToTargetWithPrompt = async (filePaths: string[], targetDir
     logger.log(`---`)
     logger.log(`Finished moving files`)
     logger.log(`---`)
+}
+
+export const moveFilesWithPrompt = async(
+    action: string,
+    currentAndTargetPaths: CurrentAndTargetPath[],
+    shouldPrompt: boolean,
+    // Umm super ugly but only way I can have this function only doing 1 file at a time?
+    setShouldPrompt: Function
+) => {
+    let i = 1
+    for (const currentAndTargetPath of currentAndTargetPaths) {
+        moveFileWithPrompt(
+            action,
+            currentAndTargetPath.currentPath,
+            currentAndTargetPath.targetPath,
+            shouldPrompt,
+            setShouldPrompt,
+            i,
+            currentAndTargetPaths.length
+        )
+
+        i++
+    }
 }
 
 export const moveFileWithPrompt = async function(
@@ -396,33 +427,44 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
     logger.log(`---`)
 }
 
-export const organiseMedia = async(yamlPaths: string[]): Promise<string[]> => {
-    const releventYamlFiles: string[] = []
+interface CurrentAndTargetPath {
+    currentPath: string,
+    targetPath: string,
+}
 
-    for (const yamlPath of yamlPaths) {
-        const sidecarFile = await readYamlFile(yamlPath)
+export const organiseMedia = async(yamlAndMediaPaths: YamlAndMediaPath[]): Promise<CurrentAndTargetPath[]> => {
+    const toBeMoved: CurrentAndTargetPath[] = []
+
+    for (const yamlAndMediaPath of yamlAndMediaPaths) {
+        const sidecarFile = await readYamlFile(yamlAndMediaPath.yamlPath)
 
         if (sidecarFile.Private || sidecarFile.DeletedAt !== undefined)
             continue
 
         const month = sidecarFile.TakenAtDateTime!.month
-        const pathShouldBe = path.join(
+        const mediaPathDirShouldBe = path.join(
             sidecarFile.TakenAtDateTime!.year.toString(),
             month < 10
                 ? '0' + month
-                : month.toString()
+                : month.toString(),
         )
 
-        const fileDirWithoutSidecar = path.dirname(
-            // oldFilePath may be: photoprism-test/data/storage/sidecar/example/IMG_20220804_113018.yml
-            // so strip photoprism-test/data/storage/sidecar/ to get just example/IMG_20220804_113018.yml
-            yamlPath.replace(env.SIDECAR_PATH, '')
-        )
+        for (const mediaPath of yamlAndMediaPath.mediaPaths) {
+            path.basename(mediaPath)
+            const mediaPathShouldBe = path.join(
+                env.ORIGINALS_PATH,
+                mediaPathDirShouldBe,
+                path.basename(mediaPath)
+            )
 
-        if (fileDirWithoutSidecar != pathShouldBe) {
-            releventYamlFiles.push(yamlPath)
+            if (mediaPath != mediaPathShouldBe) {
+                toBeMoved.push({
+                    currentPath: mediaPath,
+                    targetPath: mediaPathShouldBe,
+                })
+            }
         }
     }
 
-    return releventYamlFiles
+    return toBeMoved
 }

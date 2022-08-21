@@ -9,7 +9,9 @@ import {
     moveFilesToTargetWithPrompt,
     renameMediaFilesWithPrompt,
     organiseMedia,
+    findMediaPath,
     findMediaPaths,
+    moveFilesWithPrompt,
 } from './fileSystem'
 import { SidecarFile, } from './types/sidecarFile'
 import * as logger from './logger'
@@ -55,10 +57,16 @@ const imageMoverUi = async () => {
                     logIndexReminder()
                     break;
                 case choices[3]:
-                    const releventYamlFiles = await organiseMedia(yamlPaths)
-                    const releventImagePaths = await findMediaPaths(releventYamlFiles)
+                    let shouldPrompt = true
+                    const yamlAndMediaPaths = await findMediaPaths(yamlPaths);
+                    const currentMediaPathsAndTaget = await organiseMedia(yamlAndMediaPaths)
 
-                    await moveFilesToTargetWithPrompt(releventImagePaths, env.ORIGINALS_PATH, env.ORIGINALS_PATH)
+                    await moveFilesWithPrompt(
+                        'Move',
+                        currentMediaPathsAndTaget,
+                        shouldPrompt,
+                        (value: boolean) => shouldPrompt = value
+                    )
 
                     logIndexReminder()
                     break;

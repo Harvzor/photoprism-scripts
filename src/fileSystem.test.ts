@@ -16,6 +16,7 @@ import {
     findOrphanedYamlFiles,
     findMediaFiles,
     findPrimaryImage,
+    organiseMedia,
 } from "./fileSystem"
 import { SidecarFile } from './types/sidecarFile'
 
@@ -241,7 +242,8 @@ describe(findMediaFiles, () => {
         const mediaFiles = await findMediaFiles(['/app/storage/sidecar/foo.yml'])
 
         expect(mediaFiles.length).toBe(1)
-        expect(mediaFiles[0]).toBe('/app/originals/foo.png')
+        expect(mediaFiles[0].mediaPaths.length).toBe(1)
+        expect(mediaFiles[0].mediaPaths[0]).toBe('/app/originals/foo.png')
     })
 
     test('find one - filtered by private', async() => {
@@ -258,7 +260,8 @@ describe(findMediaFiles, () => {
         )
 
         expect(mediaFiles.length).toBe(1)
-        expect(mediaFiles[0]).toBe('/app/originals/bar.png')
+        expect(mediaFiles[0].mediaPaths.length).toBe(1)
+        expect(mediaFiles[0].mediaPaths[0]).toBe('/app/originals/bar.png')
     })
 })
 
@@ -345,5 +348,78 @@ describe(findPrimaryImage, () => {
         ])
 
         expect(primaryImage).toBe('/foo.jpg')
+    })
+})
+
+describe(organiseMedia, () => {
+    const envBackup = env
+
+    beforeEach(() => {
+        jest.resetModules()
+        vol.reset()
+        env.ORIGINALS_PATH = '/app/originals/'
+        env.SIDECAR_PATH = '/app/storage/sidecar/'
+    })
+
+    afterEach(() => {
+        env = envBackup
+    })
+
+    test('should reorganise', async() => {
+        vol.fromJSON({
+            './originals/foo.png': '',
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z
+Private: false
+Archived: false`,
+        }, '/app');
+
+        const organised = await organiseMedia([{
+            yamlPath: '/app/storage/sidecar/foo.yml',
+            mediaPaths: ['/app/originals/foo.png']
+        }])
+
+        expect(organised.length).toBe(1)
+        expect(organised[0].currentPath).toBe('/app/originals/foo.png')
+        expect(organised[0].targetPath).toBe('/app/originals/2016/01/foo.png')
+    })
+
+    test('should reorganise stacks', async() => {
+        vol.fromJSON({
+            './originals/foo.png': '',
+            './originals/foo.jpg': '',
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z
+Private: false
+Archived: false`,
+        }, '/app');
+
+        const organised = await organiseMedia([{
+            yamlPath: '/app/storage/sidecar/foo.yml',
+            mediaPaths: [
+                '/app/originals/foo.png',
+                '/app/originals/foo.jpg',
+            ]
+        }])
+
+        expect(organised.length).toBe(2)
+        expect(organised[0].currentPath).toBe('/app/originals/foo.png')
+        expect(organised[0].targetPath).toBe('/app/originals/2016/01/foo.png')
+        expect(organised[1].currentPath).toBe('/app/originals/foo.jpg')
+        expect(organised[1].targetPath).toBe('/app/originals/2016/01/foo.jpg')
+    })
+
+    test('should not reorganise', async() => {
+        vol.fromJSON({
+            './originals/2016/01/foo.png': '',
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z
+Private: false
+Archived: false`,
+        }, '/app');
+
+        const organised = await organiseMedia([{
+            yamlPath: '/app/storage/sidecar/foo.yml',
+            mediaPaths: ['/app/originals/2016/01/foo.png']
+        }])
+
+        expect(organised.length).toBe(0)
     })
 })
