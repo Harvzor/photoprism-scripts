@@ -407,17 +407,47 @@ Archived: false`,
         expect(organised[1].targetPath).toBe('/app/originals/2016/01/foo.jpg')
     })
 
-    test('should not reorganise', async() => {
+    test('should not reorganise if path already correct', async() => {
         vol.fromJSON({
             './originals/2016/01/foo.png': '',
             './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z
-Private: false
-Archived: false`,
+Private: false`,
         }, '/app');
 
         const organised = await organiseMedia([{
             yamlPath: '/app/storage/sidecar/foo.yml',
             mediaPaths: ['/app/originals/2016/01/foo.png']
+        }])
+
+        expect(organised.length).toBe(0)
+    })
+
+    test('should not reorganise if private', async() => {
+        vol.fromJSON({
+            './originals/private/foo.png': '',
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z
+Private: true`,
+        }, '/app');
+
+        const organised = await organiseMedia([{
+            yamlPath: '/app/storage/sidecar/foo.yml',
+            mediaPaths: ['/app/originals/private/foo.png']
+        }])
+
+        expect(organised.length).toBe(0)
+    })
+
+    test('should not reorganise if archived', async() => {
+        vol.fromJSON({
+            './originals/private/foo.png': '',
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z
+Private: false
+DeletedAt: 2020-01-01T12:00:00Z`,
+        }, '/app');
+
+        const organised = await organiseMedia([{
+            yamlPath: '/app/storage/sidecar/foo.yml',
+            mediaPaths: ['/app/originals/private/foo.png']
         }])
 
         expect(organised.length).toBe(0)
