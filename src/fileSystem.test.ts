@@ -15,9 +15,10 @@ import {
     moveFilesToTargetWithPrompt,
     findOrphanedYamlFiles,
     findMediaFiles,
-    findPrimaryImage,
+    findPrimaryImageForStackOfDifferentFileTypes,
     findMediaThatNeedsMoving,
     moveFileWithPrompt,
+    renameMediaFilesWithPrompt,
 } from "./fileSystem"
 import { SidecarFile } from './types/sidecarFile'
 
@@ -366,9 +367,9 @@ describe(moveFilesToTargetWithPrompt, () => {
     })
 })
 
-describe(findPrimaryImage, () => {
+describe(findPrimaryImageForStackOfDifferentFileTypes, () => {
     test('jpg vs png', async() => {
-        const primaryImage = findPrimaryImage([
+        const primaryImage = findPrimaryImageForStackOfDifferentFileTypes([
             '/foo.jpg',
             '/foo.png',
         ])
@@ -377,7 +378,7 @@ describe(findPrimaryImage, () => {
     })
 
     test('png vs jpg', async() => {
-        const primaryImage = findPrimaryImage([
+        const primaryImage = findPrimaryImageForStackOfDifferentFileTypes([
             '/foo.jpg',
             '/foo.png',
         ])
@@ -387,7 +388,7 @@ describe(findPrimaryImage, () => {
 
     // Don't know why though.
     test('jpg with shorter name should be preferred', async() => {
-        const primaryImage = findPrimaryImage([
+        const primaryImage = findPrimaryImageForStackOfDifferentFileTypes([
             '/foo.jpg',
             '/foo (2).jpg',
         ])
@@ -497,4 +498,96 @@ DeletedAt: 2020-01-01T12:00:00Z`,
 
         expect(organised.length).toBe(0)
     })
+})
+
+describe(renameMediaFilesWithPrompt, () => {
+    const envBackup = env
+
+    beforeEach(() => {
+        jest.resetModules()
+        vol.reset()
+        env.ORIGINALS_PATH = '/app/originals/'
+        env.SIDECAR_PATH = '/app/storage/sidecar/'
+    })
+
+    afterEach(() => {
+        env = envBackup
+    })
+
+    test('should rename', async() => {
+        vol.fromJSON({
+            './originals/foo.png': '1', // Needs file contest so the crc32c hash isn't just 0.
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z`,
+        }, '/app');
+
+        await renameMediaFilesWithPrompt(
+            ['/app/storage/sidecar/foo.yml'],
+            false
+        )
+
+        // Old name shouldn't be there.
+        await expect(vol.promises.access('/app/originals/foo.png')).rejects.toThrow()
+        // Should be renamed to.
+        await expect(vol.promises.access('/app/originals/20160101_120000_90F599E3.png')).resolves.not.toThrow()
+    })
+
+    test('should rename stack of different file types to have the same name', async() => {
+        vol.fromJSON({
+            './originals/foo.png': '1', // Needs file contest so the crc32c hash isn't just 0.
+            './originals/foo.jpg': '2', // Should be different to ensure correct image is being used for hash.
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z`,
+        }, '/app');
+
+        await renameMediaFilesWithPrompt(
+            ['/app/storage/sidecar/foo.yml'],
+            false
+        )
+
+        // Old name shouldn't be there.
+        await expect(vol.promises.access('/app/originals/foo.png')).rejects.toThrow()
+        await expect(vol.promises.access('/app/originals/foo.jpg')).rejects.toThrow()
+        // Should be renamed to.
+        await expect(vol.promises.access('/app/originals/20160101_120000_90F599E3.png')).resolves.not.toThrow()
+        await expect(vol.promises.access('/app/originals/20160101_120000_90F599E3.jpg')).resolves.not.toThrow()
+    })
+
+    test('should rename burst stack to have the same name', async() => {
+        vol.fromJSON({
+            './originals/foo.1.png': '1', // Needs file contest so the crc32c hash isn't just 0.
+            './originals/foo.2.png': '2',
+            './storage/sidecar/foo.yml': `TakenAt: 2016-01-01T12:00:00Z`,
+        }, '/app');
+
+        await renameMediaFilesWithPrompt(
+            ['/app/storage/sidecar/foo.yml'],
+            false
+        )
+
+        // Old name shouldn't be there.
+        await expect(vol.promises.access('/app/originals/foo.1.png')).rejects.toThrow()
+        await expect(vol.promises.access('/app/originals/foo.2.png')).rejects.toThrow()
+        // Should be renamed to.
+        await expect(vol.promises.access('/app/originals/20160101_120000_90F599E3.1.png')).resolves.not.toThrow()
+        await expect(vol.promises.access('/app/originals/20160101_120000_90F599E3.2.png')).resolves.not.toThrow()
+    })
+
+    test('shouldnt rename similar image stack to have the same name', async() => {
+        vol.fromJSON({
+            './originals/20160101_120000_90F599E3.png': '1',
+            './originals/20160101_120000_83A56A17.png': '2',
+            './storage/sidecar/20160101_120000_90F599E3.yml': `TakenAt: 2016-01-01T12:00:00Z`,
+        }, '/app');
+
+        await renameMediaFilesWithPrompt(
+            ['/app/storage/sidecar/20160101_120000_90F599E3.yml'],
+            false
+        )
+
+        await expect(vol.promises.access('/app/originals/20160101_120000_90F599E3.png')).resolves.not.toThrow()
+        await expect(vol.promises.access('/app/originals/20160101_120000_83A56A17.png')).resolves.not.toThrow()
+    })
+
+    // /media/harvey/data/Images/Life/main/2022/06/20220610_113909_9C4AC449.jpg and /media/harvey/data/Images/Life/main/2022/06/20220610_113909_B30D5D24.jpg both have one yaml of /media/harvey/data/Images/PhotoPrism/storage/sidecar/2022/06/20220610_113909_B30D5D24.yml
+
+    // BUG: it's not possible to guess the primary image since the user can select a primary?
 })

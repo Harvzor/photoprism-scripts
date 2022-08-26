@@ -73,37 +73,41 @@ export const findMediaPath = async(yamlPath: string): Promise<string[]> => {
     try {
         // Check if the target dir exists.
         await fs.promises.access(imageLocationDir)
-
-        const potentialMatches = await fs.promises.readdir(imageLocationDir)
-        let matchesFound = 0
-        for (const potentialMatch of potentialMatches) {
-            const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch))
-
-            if (stat.isDirectory())
-                continue
-
-            // If the file name matches.
-            // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
-            // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
-            if (removeExtension(path.basename(yamlPath)) === removeExtension(potentialMatch)) {
-                result.push(path.join(imageLocationDir, potentialMatch))
-                matchesFound++
-            }
-        }
-
-        // // Somehow I have YAML files which are orphaned.
-        // if (matchesFound == 0)
-        //     logger.error(`No image found for ${yamlPath}`)
     } catch {
         // Folder does not exist.
-        // YAMLs are orphans.
+        // YAML is an orphan.
+        return result
+    }
+
+    const potentialMatches = await fs.promises.readdir(imageLocationDir)
+    let matchesFound = 0
+    for (const potentialMatch of potentialMatches) {
+        const stat = await fs.promises.stat(path.join(imageLocationDir, potentialMatch))
+
+        if (stat.isDirectory())
+            continue
+
+        // If the file name matches.
+        // Could also match multiple times if the image is a burst, such as '20210717_163906_1BF7A639.00002.jpg'.
+        // If a burst is detected, there will only be one YAML file called ''20210717_163906_1BF7A639.yml'.
+        // BUG: if it's a stack, and the stack is not a burst but similar pictures (but not just different filetypes), then the images will have their own hashes, different to the hash of the yaml file.
+        if (removeExtension(potentialMatch).startsWith(removeExtension(path.basename(yamlPath)))) {
+            result.push(path.join(imageLocationDir, potentialMatch))
+            matchesFound++
+        }
     }
 
     return result
 }
 
+/**
+ * Group a yaml path with its media files.
+ */
 interface YamlAndMediaPath {
     yamlPath: string,
+    /**
+     *  Array because it could be a stack.
+     */
     mediaPaths: string[],
 }
 
@@ -305,7 +309,10 @@ export const moveFileWithPrompt = async function(
     }
 }
 
-export const findPrimaryImage = (mediaPaths: string[]): string | null => {
+/**
+ * TODO: write a primary image finder for stacks where the images appear similar or are sequential images.
+ */
+export const findPrimaryImageForStackOfDifferentFileTypes = (mediaPaths: string[]): string | null => {
     let mainMediaPath = null
 
     for (const mediaPath of mediaPaths) {
@@ -362,7 +369,13 @@ export const findPrimaryImage = (mediaPaths: string[]): string | null => {
     return mainMediaPath
 }
 
-export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
+/**
+ * Auto rename the files trying to use the same pattern that Photoprism uses.
+ * Useful for if you:
+ * - index media (rather than importing) which doesn't rename files.
+ * - change the date of a media file, the name is not auto-updated in Photoprism.
+ */
+export const renameMediaFilesWithPrompt = async function(yamlPaths: string[], shouldPrompt = true) {
     interface CurrentAndTargetFile {
         currentMediaPath: string,
         targetFileName: string,
@@ -375,7 +388,7 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
         if (mediaPaths.length === 0)
             return false
 
-        const primaryMediaPath = findPrimaryImage(mediaPaths)!
+        const primaryMediaPath = findPrimaryImageForStackOfDifferentFileTypes(mediaPaths)!
 
         const sidecarFile = await readYamlFile(yamlPath)
         // example: 20030711_140833_0F7C9F04.yml
@@ -391,7 +404,8 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
         const targetFileName = dateString + hash
 
         // Could be a stack.
-        // BUG: actually the name of all the files in the stack are the same, so the hash is only generated from one image. 👀
+        // BUG: if an image is stacked because it's a burst image (and has a name like 01 or 02 on the end), then the images will have the same hash except for the image number.
+        // BUG: if an image is stacked because it looks similar, then it will have a different hash but the same yaml file? and the yaml will have the hash of the primary image.
         for (const mediaPath of mediaPaths) {
             const currentFileName = removeExtension(path.basename(mediaPath))
 
@@ -404,7 +418,6 @@ export const renameMediaFilesWithPrompt = async function(yamlPaths: string[]) {
         }
     }
 
-    let shouldPrompt = false
     let i = 1
     for (const currentAndTargetFile of currentAndTargetFiles) {
         const fileDir = path.dirname(currentAndTargetFile.currentMediaPath)
@@ -434,6 +447,12 @@ interface CurrentAndTargetPath {
     targetPath: string,
 }
 
+/**
+ * Auto move the media into the correct folder structure.
+ * Useful for if you:
+ * - index media (rather than importing) which retains the file/folder structure.
+ * - change the date of a media file, the media file is not moved into the correct location in the folder structure.
+ */
 export const findMediaThatNeedsMoving = async(yamlAndMediaPaths: YamlAndMediaPath[]): Promise<CurrentAndTargetPath[]> => {
     const toBeMoved: CurrentAndTargetPath[] = []
 
