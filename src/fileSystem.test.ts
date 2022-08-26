@@ -17,6 +17,7 @@ import {
     findMediaFiles,
     findPrimaryImage,
     findMediaThatNeedsMoving,
+    moveFileWithPrompt,
 } from "./fileSystem"
 import { SidecarFile } from './types/sidecarFile'
 
@@ -265,6 +266,50 @@ describe(findMediaFiles, () => {
     })
 })
 
+describe(moveFileWithPrompt, () => {
+    beforeEach(() => {
+        vol.reset()
+    })
+
+    test('move', async() => {
+        vol.fromJSON({
+            './foo.png': '',
+        }, '/app');
+
+        await moveFileWithPrompt(
+            "Action",
+            '/app/foo.png',
+            '/app/subdir/foo.png',
+            false,
+            () => {},
+            1,
+            1
+        )
+
+        await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
+        await expect(vol.promises.access('/app/subdir/foo.png')).resolves.not.toThrow()
+    })
+
+    test('move 2 subdirs down', async() => {
+        vol.fromJSON({
+            './foo.png': '',
+        }, '/app');
+
+        await moveFileWithPrompt(
+            "Action",
+            '/app/foo.png',
+            '/app/subdir1/subdir2/foo.png',
+            false,
+            () => {},
+            1,
+            1
+        )
+
+        await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
+        await expect(vol.promises.access('/app/subdir1/subdir2/foo.png')).resolves.not.toThrow()
+    })
+})
+
 describe(moveFilesToTargetWithPrompt, () => {
     beforeEach(() => {
         vol.reset()
@@ -275,7 +320,7 @@ describe(moveFilesToTargetWithPrompt, () => {
             './foo.png': '',
         }, '/app');
 
-        await moveFilesToTargetWithPrompt(['/app/foo.png'], '/app/target/', undefined, true)
+        await moveFilesToTargetWithPrompt(['/app/foo.png'], '/app/target/', undefined, false)
 
         await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
         await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
@@ -287,7 +332,7 @@ describe(moveFilesToTargetWithPrompt, () => {
             './bar.jpg': '',
         }, '/app');
 
-        await moveFilesToTargetWithPrompt(['/app/foo.png', '/app/bar.jpg'], '/app/target/', undefined, true)
+        await moveFilesToTargetWithPrompt(['/app/foo.png', '/app/bar.jpg'], '/app/target/', undefined, false)
 
         await expect(vol.promises.access('/app/foo.png')).rejects.toThrow()
         await expect(vol.promises.access('/app/bar.jpg')).rejects.toThrow()
@@ -300,7 +345,7 @@ describe(moveFilesToTargetWithPrompt, () => {
             './subdir/foo.png': '',
         }, '/app');
 
-        await moveFilesToTargetWithPrompt(['/app/subdir/foo.png'], '/app/target/', undefined, true)
+        await moveFilesToTargetWithPrompt(['/app/subdir/foo.png'], '/app/target/', undefined, false)
 
         await expect(vol.promises.access('/app/subdir/foo.png')).rejects.toThrow()
         await expect(vol.promises.access('/app/target/foo.png')).resolves.not.toThrow()
@@ -312,7 +357,7 @@ describe(moveFilesToTargetWithPrompt, () => {
         }, '/app');
 
         // Extension is different.
-        await expect(moveFilesToTargetWithPrompt(['/app/foo.jpg'], '/app/target/', undefined, true)).rejects.toThrowError()
+        await expect(moveFilesToTargetWithPrompt(['/app/foo.jpg'], '/app/target/', undefined, false)).rejects.toThrowError()
 
         // File shouldn't have moved.
         await expect(vol.promises.access('/app/foo.png')).resolves.not.toThrow()

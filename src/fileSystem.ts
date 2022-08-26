@@ -169,16 +169,19 @@ export const findMediaFiles = async(yamlPaths: string[], filterFunction?: Functi
 export const findMediaFilesAndMoveToTarget = async function(yamlPaths: string[], targetFolderName: string, filterFunction: Function) {
     const matchingImagePaths = await findMediaFiles(yamlPaths, filterFunction) 
 
-    await moveFilesToTargetWithPrompt(matchingImagePaths.map(x => x.mediaPaths).flat(), path.join(env.ORIGINALS_PATH, targetFolderName))
+    await moveFilesToTargetWithPrompt(
+        matchingImagePaths.map(x => x.mediaPaths).flat(),
+        path.join(env.ORIGINALS_PATH, targetFolderName)
+    )
 }
 
 /**
  * @param  {string[]} filePaths Full paths.
  * @param  {string} targetDir Base path of where the files should be moved.
  * @param  {string?} oldDir If defined, the the file will be moved from the old path, but retain the structure excluding the oldDir.
- * @param  {boolean} auto If true, do not prompt.
+ * @param  {boolean} shouldPrompt If false, do not prompt.
  */
-export const moveFilesToTargetWithPrompt = async (filePaths: string[], targetDir: string, oldDir?: string, auto = false) => {
+export const moveFilesToTargetWithPrompt = async (filePaths: string[], targetDir: string, oldDir?: string, shouldPrompt = true) => {
     // TODO: could also check that the files to be moved even exist
     const filePathsThatNeedMoving = filePaths
         // No need to move as the file is already there.
@@ -204,8 +207,8 @@ export const moveFilesToTargetWithPrompt = async (filePaths: string[], targetDir
             "Move",
             oldFilePath,
             newFilePath,
-            auto,
-            (value: boolean) => auto = value,
+            shouldPrompt,
+            (value: boolean) => shouldPrompt = value,
             i,
             filePathsThatNeedMoving.length
         )
@@ -261,11 +264,10 @@ export const moveFileWithPrompt = async function(
         await fs.promises.rename(oldFilePath, newFilePath)
     }
 
-    // BUG: won't work if there's multiple subdirs that don't exist.
     const targetDir = path.dirname(newFilePath)
     if (!fs.existsSync(targetDir)) {
         logger.log(`Target folder does not exist, creating ${targetDir}`)
-        await fs.promises.mkdir(targetDir)
+        await fs.promises.mkdir(targetDir, { recursive: true, })
     }
 
     logger.log(`---`)
@@ -274,7 +276,7 @@ export const moveFileWithPrompt = async function(
     logger.log(`| from ${oldFilePath}`)
     logger.log(`| to   ${newFilePath}`)
 
-    if (shouldPrompt) {
+    if (!shouldPrompt) {
         await rename()
     } else {
         await inquirer
